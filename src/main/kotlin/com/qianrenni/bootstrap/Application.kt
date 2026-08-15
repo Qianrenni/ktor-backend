@@ -85,6 +85,17 @@ private fun Application.configureScheduledTasks() {
                 services.outboxService.processPending()
             }
         )
+        // 内容存储自动 compact：定时扫描 + 垃圾占比阈值过滤（见 ContentStoreCompactor）
+        if (appConfig.contentStoreCompactEnable) {
+            register(
+                TaskConfig(
+                    name = "内容存储自动compact",
+                    cronExpression = appConfig.contentStoreCompactCron
+                ) {
+                    services.contentStoreCompactor.compactAll()
+                }
+            )
+        }
         start()
     }
 }

@@ -325,11 +325,46 @@ class ContentStoreSync(
     }
 
     // -------------------- 章节列表 --------------------
-    fun toList(): List<Int> {
+    suspend fun toList(): List<Int> {
+        ensureLoaded() // 新实例首次调用时索引可能尚未加载（避免返回空列表）
         return indexSnapshot
             .filter { !it.value.isDelete }
             .keys
             .sorted()
+    }
+
+    // -------------------- compact 指标（供自动 compact 判断） --------------------
+
+    /** 有效字节：所有最新记录（含墓碑）占用的磁盘空间（header + 内容） */
+    fun liveBytes(): Long =
+        indexSnapshot.values.sumOf { RECORD_HEADER_SIZE.toLong() + it.contentSize }
+
+    /** 垃圾占比 = 1 - 有效字节 / 文件总大小；文件不存在或为空返回 0 */
+    fun garbageRatio(): Double {
+        val fileLen = dataFile.length()
+        if (fileLen <= 0L) return 0.0
+        return 1.0 - liveBytes().toDouble() / fileLen
+    }
+
+    /**
+     * 判断该 store 是否需要自动 compact：
+     * - 文件不存在/为空：不整理
+     * - 文件超过 [maxFileBytes]：跳过（避免单次整理阻塞该 store 读写过久）
+     * - 有效字节小于 [minLiveBytes]：跳过（太小不值得整理）
+     * - 垃圾占比达到 [garbageThreshold]：整理
+     */
+    suspend fun needsCompact(
+        garbageThreshold: Double,
+        minLiveBytes: Long,
+        maxFileBytes: Long
+    ): Boolean {
+        ensureLoaded()
+        val fileLen = dataFile.length()
+        if (fileLen <= 0L) return false
+        if (fileLen > maxFileBytes) return false
+        val live = liveBytes()
+        if (live < minLiveBytes) return false
+        return garbageRatio() >= garbageThreshold
     }
 
     // -------------------- 压缩整理 --------------------
@@ -520,7 +555,7 @@ class ContentStoreService(
     override suspend fun delete(contentId: Int) = sync.delete(contentId)
 
     /** 获取所有有效章节 ID 列表（升序） */
-    fun toList(): List<Int> = sync.toList()
+    suspend fun toList(): List<Int> = sync.toList()
 
     /** 执行 compact 整理 */
     suspend fun compact() = sync.compact()

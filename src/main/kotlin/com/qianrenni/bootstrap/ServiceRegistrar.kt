@@ -6,6 +6,7 @@ import com.qianrenni.infrastructure.database.databaseManager
 import com.qianrenni.infrastructure.database.redisManager
 import com.qianrenni.infrastructure.mail.EmailService
 import com.qianrenni.infrastructure.outbox.OutboxService
+import com.qianrenni.infrastructure.storage.ContentStoreCompactor
 import com.qianrenni.infrastructure.storage.ContentStoreFactory
 import com.qianrenni.infrastructure.task.TaskManager
 import com.qianrenni.modules.admin.AdminService
@@ -52,6 +53,7 @@ fun Application.configService(): Services {
     val rightService = RightService(permissionCache, db)
     val roleAdminService = RoleAdminService(permissionCache, db)
     val contentStoreFactory = ContentStoreFactory(config)
+    val contentStoreCompactor = ContentStoreCompactor(config, logger)
     val emailService = EmailService(config, logger)
     val outboxService = OutboxService(config, db, logger, contentStoreFactory)
     val userService = UserService(config, db, rightService, captchaService)
@@ -87,6 +89,7 @@ fun Application.configService(): Services {
         readProgressService = readProgressService,
         systemService = systemService,
         taskManager = taskManager,
+        contentStoreCompactor = contentStoreCompactor,
     )
     attributes[ServicesKey] = services
 

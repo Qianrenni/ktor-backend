@@ -3,6 +3,7 @@ package com.qianrenni.bootstrap
 import com.qianrenni.infrastructure.cache.CacheService
 import com.qianrenni.infrastructure.mail.EmailService
 import com.qianrenni.infrastructure.outbox.OutboxService
+import com.qianrenni.infrastructure.storage.ContentStoreCompactor
 import com.qianrenni.infrastructure.task.TaskManager
 import com.qianrenni.modules.admin.AdminService
 import com.qianrenni.modules.admin.AuditService
@@ -53,4 +54,5 @@ class Services(
     val readProgressService: ReadProgressService,
     val systemService: SystemService,
     val taskManager: TaskManager,
+    val contentStoreCompactor: ContentStoreCompactor,
 )

@@ -47,6 +47,13 @@ data class AppConfig(
     val contentDir: String ,
     val chapterEncoding: String ,
 
+    // 内容存储自动 compact 配置
+    val contentStoreCompactEnable: Boolean ,
+    val contentStoreCompactCron: String ,
+    val contentStoreCompactGarbageThreshold: Double ,
+    val contentStoreCompactMinLiveBytes: Long ,
+    val contentStoreCompactMaxFileBytes: Long ,
+
     // 服务器配置
     val serverUrl: String ,
 
@@ -96,6 +103,11 @@ data class AppConfig(
                 staticDir = env("STATIC_DIR") ?: "static",
                 contentDir = env("CONTENT_DIR") ?: "store",
                 chapterEncoding = env("CHAPTER_ENCODING") ?: "utf-8",
+                contentStoreCompactEnable = env("CONTENT_STORE_COMPACT_ENABLE")?.toBooleanStrictOrNull() ?: true,
+                contentStoreCompactCron = env("CONTENT_STORE_COMPACT_CRON") ?: "0 30 4 * * ?",
+                contentStoreCompactGarbageThreshold = env("CONTENT_STORE_COMPACT_GARBAGE_THRESHOLD")?.toDoubleOrNull() ?: 0.4,
+                contentStoreCompactMinLiveBytes = env("CONTENT_STORE_COMPACT_MIN_LIVE_BYTES")?.toLongOrNull() ?: (64 * 1024).toLong(),
+                contentStoreCompactMaxFileBytes = env("CONTENT_STORE_COMPACT_MAX_FILE_BYTES")?.toLongOrNull() ?: (512L * 1024 * 1024),
                 serverUrl = env("SERVER_URL") ?: "http://localhost:8080",
                 smtpServer = env("SMTP_SERVER") ?: "smtp.qq.com",
                 smtpPort = env("SMTP_PORT").toIntOrDefault(465),
