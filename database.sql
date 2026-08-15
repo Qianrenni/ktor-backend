@@ -675,8 +675,10 @@ CREATE TABLE IF NOT EXISTS `book_comment`
 (
     'PENDING',
     'DELETING',
+    'REVIEWING',
     'APPROVED',
     'REJECTED',
+    'PUBLISHED',
     'DELETED'
 ) NOT NULL DEFAULT 'APPROVED',
     `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -737,8 +739,10 @@ CREATE TABLE IF NOT EXISTS `book_chapter_comment`
 (
     'PENDING',
     'DELETING',
+    'REVIEWING',
     'APPROVED',
     'REJECTED',
+    'PUBLISHED',
     'DELETED'
 ) NOT NULL DEFAULT 'APPROVED',
     `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -776,11 +780,27 @@ CREATE TABLE IF NOT EXISTS `book_chapter_comment`
     ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 -- ============================================================
+-- 存量数据库迁移（仅对已存在的库执行一次）
+-- 评论表 status 枚举补充 REVIEWING / PUBLISHED（与 Kotlin BookStatus 对齐），
+-- 否则发布书评/行评论会报 "Data truncated for column 'status'"。
+-- ============================================================
+use ktor;
+ALTER TABLE `book_comment`
+    MODIFY COLUMN `status`
+    ENUM('PENDING', 'DELETING', 'REVIEWING', 'APPROVED', 'REJECTED', 'PUBLISHED', 'DELETED')
+    NOT NULL DEFAULT 'APPROVED';
+
+ALTER TABLE `book_chapter_comment`
+    MODIFY COLUMN `status`
+    ENUM('PENDING', 'DELETING', 'REVIEWING', 'APPROVED', 'REJECTED', 'PUBLISHED', 'DELETED')
+    NOT NULL DEFAULT 'APPROVED';
+
+-- ============================================================
 -- file_sync_outbox
 -- 业务元数据与 outbox 记录在同一事务内写入，由后台 worker 消费执行文件操作，
 -- 保证 DB 元数据与文件内容的最终一致。
 -- ============================================================
-use alpha;
+use ktor;
 CREATE TABLE IF NOT EXISTS `file_sync_outbox`
 (
     `id` INT NOT NULL AUTO_INCREMENT,

@@ -1,12 +1,13 @@
 package com.qianrenni.modules.book
 
 import com.qianrenni.common.ActionEnum
+import com.qianrenni.common.BookStatus
 import com.qianrenni.common.ResourceTypeEnum
 import com.qianrenni.common.ScopeEnum
 import com.qianrenni.common.web.getCurrentUser
 import com.qianrenni.common.web.requirePermission
 import com.qianrenni.common.ResponseModel
-import com.qianrenni.modules.book.CommentService
+import com.qianrenni.modules.author.AuthorService
 import com.qianrenni.modules.admin.generatePermissionCode
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
@@ -23,7 +24,7 @@ data class LineCommentBody(val line: Int, val content: String)
 @Serializable
 data class CommentStatusBody(val status: String)
 
-fun Routing.comment(commentService: CommentService) {
+fun Routing.comment(commentService: CommentService, authorService: AuthorService) {
     // ==================== 无需认证 - 公开读取 ====================
     route("/comment") {
 
@@ -99,12 +100,17 @@ fun Routing.comment(commentService: CommentService) {
                 call.respond(ResponseModel.Success(data = result))
             }
 
-            // DELETE /comment/chapter/{bookId}/{chapterId} - 删除行评论
+            // DELETE /comment/chapter/{bookId}/{chapterId} - 删除自己的行评论
             delete("/chapter/{bookId}/{chapterId}") {
                 val user = call.getCurrentUser()
                 val bookId = call.requirePathParameter("bookId").toInt()
                 val chapterId = call.requirePathParameter("chapterId").toInt()
-                val line = call.requireQueryParameter("line").toInt()
+                val commentId = call.requireQueryParameter("commentId").toInt()
+                commentService.deleteLineComment(
+                    userId = user.id,
+                    chapterId = chapterId,
+                    commentId = commentId
+                )
                 call.respond(ResponseModel.Empty(message = "评论已删除"))
             }
         }
@@ -114,27 +120,33 @@ fun Routing.comment(commentService: CommentService) {
     authenticate("auth-jwt") {
         route("/admin/comments") {
 
-            // GET /admin/comments - 获取评论列表
+            // GET /admin/comments - 分页获取书评列表（可按状态/书籍/用户名过滤）
             get {
                 call.requirePermission(
                     listOf(generatePermissionCode(ResourceTypeEnum.COMMENT, ActionEnum.READ, ScopeEnum.ALL))
                 )
                 val page = call.request.queryParameters["page"]?.toInt() ?: 1
                 val size = call.request.queryParameters["size"]?.toInt() ?: 20
-                val status = call.request.queryParameters["status"]
+                val status = call.request.queryParameters["status"]?.let { BookStatus.fromValue(it) }
                 val bookId = call.request.queryParameters["bookId"]?.toIntOrNull()
                 val keyword = call.request.queryParameters["keyword"]
+                val result = commentService.listBookReviews(bookId, page, size, status, keyword)
+                call.respond(ResponseModel.Success(data = result))
             }
 
-            // PATCH /admin/comments/{id}/status - 审核评论
+            // PATCH /admin/comments/{id}/status - 审核评论（改状态）
             patch("/{id}/status") {
                 call.requirePermission(
                     listOf(generatePermissionCode(ResourceTypeEnum.COMMENT, ActionEnum.AUDIT, ScopeEnum.ALL))
                 )
-                val user = call.getCurrentUser()
                 val commentId = call.requirePathParameter("id").toInt()
                 val body = call.receive<CommentStatusBody>()
-                call.respond(ResponseModel.Empty(message = "审核成功"))
+                val updated = commentService.auditBookReview(commentId, BookStatus.fromValue(body.status))
+                if (updated) {
+                    call.respond(ResponseModel.Empty(message = "审核成功"))
+                } else {
+                    call.respond(ResponseModel.Error(message = "评论不存在"))
+                }
             }
 
             // DELETE /admin/comments/{id} - 强制删除评论
@@ -142,8 +154,8 @@ fun Routing.comment(commentService: CommentService) {
                 call.requirePermission(
                     listOf(generatePermissionCode(ResourceTypeEnum.COMMENT, ActionEnum.DELETE, ScopeEnum.ALL))
                 )
-                val user = call.getCurrentUser()
                 val commentId = call.requirePathParameter("id").toInt()
+                commentService.forceDeleteBookReview(commentId)
                 call.respond(ResponseModel.Empty(message = "评论已删除"))
             }
         }
@@ -157,9 +169,12 @@ fun Routing.comment(commentService: CommentService) {
             get("/book/{bookId}") {
                 val user = call.getCurrentUser()
                 val bookId = call.requirePathParameter("bookId").toInt()
+                authorService.checkAuthor(user.id, bookId)
                 val page = call.request.queryParameters["page"]?.toInt() ?: 1
                 val size = call.request.queryParameters["size"]?.toInt() ?: 20
-                val status = call.request.queryParameters["status"]
+                val status = call.request.queryParameters["status"]?.let { BookStatus.fromValue(it) }
+                val result = commentService.listBookReviews(bookId, page, size, status, null)
+                call.respond(ResponseModel.Success(data = result))
             }
         }
     }

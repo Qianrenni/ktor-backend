@@ -12,9 +12,8 @@ import com.qianrenni.testutil.withTestApplication
 import org.jetbrains.exposed.sql.selectAll
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * CommentService 集成测试：书评分页查询、书评软删除、章节行评论查询；
@@ -69,10 +68,9 @@ class TestCommentService {
     }
 
     @Test
-    fun `getMyBookReview 不过滤已删除状态 已知缺陷固化`() = withTestApplication {
-        // 已知缺陷（待修复）：getMyBookReview 的 where 条件只有 bookId + userId，
-        // 没有 status=PUBLISHED 过滤，软删除后仍能查到 DELETED 记录。
-        // 固化当前行为，防止无意识"修复"破坏前端依赖。
+    fun `getMyBookReview 软删除后返回 null`() = withTestApplication {
+        // 修复后：getMyBookReview 只返回已发布书评，软删除后返回 null，
+        // 供前端正确判断「写书评/编辑/删除」入口。
         val userId = TestUsers.userIds.getValue(TestUsers.USER_NAME)
         val bookId = insertTestBook()
         commentService.createBookReview(userId, bookId, "评论内容")
@@ -81,15 +79,27 @@ class TestCommentService {
         commentService.deleteMyReview(userId, bookId)
 
         val review = commentService.getMyBookReview(userId, bookId)
-        assertNotNull(review)
-        assertEquals("DELETED", review!!.status)
+        assertNull(review)
     }
 
     @Test
-    fun `deleteLineComment 跨表条件缺陷 已知缺陷固化`() = withTestApplication {
-        // 已知缺陷（未被任何控制器调用）：deleteLineComment 在 BookCommentTable.update 的
-        // 条件中引用了 BookChapterCommentTable.id，生成 SQL 会因列不属于目标表而报错。
-        // 固化当前行为：方法抛异常，而不是静默失败。
+    fun `createBookReview 重复发布更新内容而非新增`() = withTestApplication {
+        // 修复后：同一用户对同一本书重复发布应只保留一条已发布书评，内容更新为最新。
+        val userId = TestUsers.userIds.getValue(TestUsers.USER_NAME)
+        val bookId = insertTestBook()
+        commentService.createBookReview(userId, bookId, "第一版")
+        outboxService.processPending()
+        commentService.createBookReview(userId, bookId, "第二版")
+        outboxService.processPending()
+
+        val page = commentService.getBookReviews(bookId, page = 1, size = 10, parentId = null)
+        assertEquals(1, page.total, "同一用户对同一本书重复发布应只保留一条书评")
+        assertEquals("第二版", page.items.single().content, "内容应更新为最新版本")
+    }
+
+    @Test
+    fun `deleteLineComment 删除自己的行评论后不再可见`() = withTestApplication {
+        // 修复后：deleteLineComment 正确更新 BookChapterCommentTable，并校验章节归属。
         val userId = TestUsers.userIds.getValue(TestUsers.USER_NAME)
         val bookId = insertTestBook()
         val chapterId = insertTestChapter(bookId)
@@ -99,7 +109,46 @@ class TestCommentService {
             BookChapterCommentTable.selectAll().single()[BookChapterCommentTable.id].value
         }
 
-        assertFailsWith<Exception> { commentService.deleteLineComment(commentId) }
+        commentService.deleteLineComment(userId, chapterId, commentId)
+
+        val comments = commentService.getChapterComments(chapterId)
+        assertTrue(comments.isEmpty(), "删除后该章行评论不应包含已删除评论")
+    }
+
+    @Test
+    fun `listBookReviews 管理端过滤与内容读取`() = withTestApplication {
+        val u1 = TestUsers.userIds.getValue(TestUsers.USER_NAME)
+        val u2 = TestUsers.userIds.getValue(TestUsers.AUTHOR_NAME)
+        val bookId = insertTestBook()
+        commentService.createBookReview(u1, bookId, "评论一")
+        commentService.createBookReview(u2, bookId, "评论二")
+        outboxService.processPending()
+
+        val all = commentService.listBookReviews(bookId = null, page = 1, size = 10, status = null, keyword = null)
+        assertEquals(2, all.total)
+
+        val byBook = commentService.listBookReviews(bookId = bookId, page = 1, size = 10, status = null, keyword = null)
+        assertEquals(2, byBook.total)
+
+        val byUser = commentService.listBookReviews(bookId = null, page = 1, size = 10, status = null, keyword = TestUsers.USER_NAME)
+        assertEquals(1, byUser.total)
+        assertEquals("评论一", byUser.items.single().content)
+    }
+
+    @Test
+    fun `forceDeleteBookReview 软删除并登记墓碑`() = withTestApplication {
+        val userId = TestUsers.userIds.getValue(TestUsers.USER_NAME)
+        val bookId = insertTestBook()
+        commentService.createBookReview(userId, bookId, "将被强制删除")
+        outboxService.processPending()
+        val commentId = commentService.getMyBookReview(userId, bookId)!!.id
+
+        commentService.forceDeleteBookReview(commentId)
+        outboxService.processPending()
+
+        val page = commentService.getBookReviews(bookId, page = 1, size = 10, parentId = null)
+        assertEquals(0, page.total)
+        assertNull(commentService.getMyBookReview(userId, bookId))
     }
 
     @Test

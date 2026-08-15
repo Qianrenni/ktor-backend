@@ -37,7 +37,7 @@ fun Application.configureRouting() {
         adminPermission(services.admin.rightService, services.admin.roleAdminService)
         adminUser(services.admin.adminService, services.admin.roleAdminService)
         adminBook(services.admin.adminService)
-        comment(services.book.commentService)
+        comment(services.book.commentService, services.author.authorService)
         author(services.author.authorService, services.author.authorApplicationService)
         system(services.system.systemService)
         systemConfig(services.system.systemConfigService)
