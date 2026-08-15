@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "codegraph": {
+      "type": "stdio",
+      "command": "codegraph",
+      "args": [
+        "serve",
+        "--mcp"
+      ]
+    },
+    "qyani-knowledge": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@qianrenni/mcp"
+      ]
+    }
+  }
+}
