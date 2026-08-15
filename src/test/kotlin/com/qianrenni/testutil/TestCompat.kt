@@ -26,52 +26,52 @@ import io.ktor.server.application.Application
  * `xxxService.processPending() / xxxService.get(...)` 调用提供同包别名。
  */
 val Application.outboxService: OutboxService
-    get() = services.outboxService
+    get() = services.infra.outboxService
 
 val Application.userService: UserService
-    get() = services.userService
+    get() = services.user.userService
 
 val Application.captchaService: CaptchaService
-    get() = services.captchaService
+    get() = services.user.captchaService
 
 val Application.shelfService: ShelfService
-    get() = services.shelfService
+    get() = services.book.shelfService
 
 val Application.statisticsService: StatisticsService
-    get() = services.statisticsService
+    get() = services.book.statisticsService
 
 val Application.bookService: BookService
-    get() = services.bookService
+    get() = services.book.bookService
 
 val Application.commentService: CommentService
-    get() = services.commentService
+    get() = services.book.commentService
 
 val Application.readProgressService: ReadProgressService
-    get() = services.readProgressService
+    get() = services.book.readProgressService
 
 val Application.authorService: AuthorService
-    get() = services.authorService
+    get() = services.author.authorService
 
 val Application.auditService: AuditService
-    get() = services.auditService
+    get() = services.admin.auditService
 
 val Application.adminService: AdminService
-    get() = services.adminService
+    get() = services.admin.adminService
 
 val Application.rightService: RightService
-    get() = services.rightService
+    get() = services.admin.rightService
 
 val Application.roleAdminService: RoleAdminService
-    get() = services.roleAdminService
+    get() = services.admin.roleAdminService
 
 val Application.emailService: EmailService
-    get() = services.emailService
+    get() = services.infra.emailService
 
 val Application.systemService: SystemService
-    get() = services.systemService
+    get() = services.system.systemService
 
 val Application.cacheService: CacheService
-    get() = services.cacheService
+    get() = services.infra.cacheService
 
 val Application.authorApplicationService: AuthorApplicationService
-    get() = services.authorApplicationService
+    get() = services.author.authorApplicationService

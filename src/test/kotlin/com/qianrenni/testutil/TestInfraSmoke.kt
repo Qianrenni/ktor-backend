@@ -44,7 +44,7 @@ class TestInfraSmoke {
         testApplication {
             application { testConfigure() }
             startApplication()
-            val rs = application.services.rightService
+            val rs = application.services.admin.rightService
             // ApplicationStarted 已触发自动 start()，验证内存数据
             assertEquals(84, rs.permissionDict.size)
             assertEquals(5, rs.roleDict.size)

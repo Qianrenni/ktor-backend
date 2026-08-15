@@ -1,6 +1,7 @@
 package com.qianrenni.infrastructure.storage
 
 import com.qianrenni.common.AppConfig
+import com.qianrenni.common.config.ConfigService
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.Logger
@@ -19,6 +20,7 @@ import kotlin.io.path.name
  * - 递归遍历 [AppConfig.contentDir]，任何含 `data.log` 的目录视为一个 store；
  * - 仅对满足 `needsCompact` 阈值（垃圾占比 / 最小有效字节 / 最大文件大小）的 store 执行 compact，
  *   健康 store 不做任何 I/O；
+ * - 阈值取自动态配置（[ConfigService.compact]），支持运行期调整；
  * - 复用 [ContentStoreManager] 的共享同步单元（引用计数 acquire/release），
  *   与业务读写天然互斥——[ContentStoreSync.compact] 内部自带写锁 + 读写锁，
  *   不会破坏既有的并发读写语义；
@@ -26,6 +28,7 @@ import kotlin.io.path.name
  */
 class ContentStoreCompactor(
     private val config: AppConfig,
+    private val configService: ConfigService,
     private val logger: Logger,
 ) {
     private val sweepMutex = Mutex()
@@ -49,6 +52,7 @@ class ContentStoreCompactor(
             if (stores.isEmpty()) return 0
 
             logger.info("内容存储自动compact扫描：共发现 {} 个 store", stores.size)
+            val dynamic = configService.compact() // 动态阈值（可运行期调整）
             var compacted = 0
             for (storeDir in stores) {
                 try {
@@ -57,9 +61,9 @@ class ContentStoreCompactor(
                     val sync = ContentStoreManager.getOrCreateSync(name, baseDir)
                     try {
                         val need = force || sync.needsCompact(
-                            garbageThreshold = config.contentStoreCompactGarbageThreshold,
-                            minLiveBytes = config.contentStoreCompactMinLiveBytes,
-                            maxFileBytes = config.contentStoreCompactMaxFileBytes
+                            garbageThreshold = dynamic.garbageThreshold,
+                            minLiveBytes = dynamic.minLiveBytes,
+                            maxFileBytes = dynamic.maxFileBytes
                         )
                         if (need) {
                             logger.info("自动compact store: {} / {}", baseDir, name)

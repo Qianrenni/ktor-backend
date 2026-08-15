@@ -14,6 +14,7 @@
 | [05-build-run.md](05-build-run.md) | 构建运行 | 编译、启动服务、环境配置 |
 | [06-committing.md](06-committing.md) | 提交 | 生成 commit message、提交被拒 |
 | [07-troubleshooting.md](07-troubleshooting.md) | 排错 | 编译/测试/运行/hook 报错 |
+| [08-config.md](08-config.md) | 动态配置 | 新增/修改可运行期调整的配置项 |
 
 ## 通用工作流（大多数任务）
 
@@ -32,3 +33,4 @@
 - 要补测试 → `04-testing.md`。
 - 本地起不来 / 构建失败 → `05-build-run.md`、`07-troubleshooting.md`。
 - 要提交 / 提交被拒 → `06-committing.md`。
+- 要调动态配置 / 配置热更 → `08-config.md`。

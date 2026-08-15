@@ -1,7 +1,9 @@
 package com.qianrenni.bootstrap
 
 import com.qianrenni.common.appConfig
+import com.qianrenni.common.config.ConfigService
 import com.qianrenni.infrastructure.cache.CacheService
+import com.qianrenni.infrastructure.config.RedisConfigSource
 import com.qianrenni.infrastructure.database.databaseManager
 import com.qianrenni.infrastructure.database.redisManager
 import com.qianrenni.infrastructure.mail.EmailService
@@ -9,6 +11,7 @@ import com.qianrenni.infrastructure.outbox.OutboxService
 import com.qianrenni.infrastructure.storage.ContentStoreCompactor
 import com.qianrenni.infrastructure.storage.ContentStoreFactory
 import com.qianrenni.infrastructure.task.TaskManager
+import com.qianrenni.modules.system.SystemConfigService
 import com.qianrenni.modules.admin.AdminService
 import com.qianrenni.modules.admin.AuditService
 import com.qianrenni.modules.admin.PermissionCache
@@ -30,75 +33,111 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
 /**
- * 应用服务组合根装配点（手工组合根）。
+ * 应用服务组合根装配点（手工组合根 + 领域分组）。
  *
- * 按依赖顺序显式构造全部 Service 并挂到 [Services] 组合根，替代旧的
- * 「每个 Service 注入整个 Application、运行时从 attributes 按需取依赖」的服务定位器写法：
+ * 按「基础设施 → 权限/管理 → 用户 → 书籍 → 作者 → 系统」的依赖顺序，
+ * 通过各 `assembleXxx` 函数构造领域服务组并聚合到 [Services]：
+ * - 各领域组定义见 `ServiceGroups.kt`；
  * - Service 构造参数即其全部依赖，编译期可见、可 mock、可替换；
- * - 依赖创建顺序在此集中管理，避免循环依赖与初始化遗漏。
+ * - 新增服务只改对应领域装配函数，不再改动顶层 [Services]。
  *
  * 调用方：
  * - 生产：`Application.main` 在 configureRouting 之前调用本方法；
  * - 测试：`Application.testConfigure` 调用本方法后按需手动触发 Outbox/定时任务。
  */
 fun Application.configService(): Services {
-    val config = appConfig
-    val db = databaseManager
-    val redis = redisManager
-    val logger = environment.log
-
-    val cacheService = CacheService(logger, redis)
-    val captchaService = CaptchaService(config, redis)
-    val permissionCache = PermissionCache(config, db, logger)
-    val rightService = RightService(permissionCache, db)
-    val roleAdminService = RoleAdminService(permissionCache, db)
-    val contentStoreFactory = ContentStoreFactory(config)
-    val contentStoreCompactor = ContentStoreCompactor(config, logger)
-    val emailService = EmailService(config, logger)
-    val outboxService = OutboxService(config, db, logger, contentStoreFactory)
-    val userService = UserService(config, db, rightService, captchaService)
-    val auditService = AuditService(config, db, contentStoreFactory)
-    val bookService = BookService(config, db, cacheService, contentStoreFactory)
-    val commentService = CommentService(config, db, outboxService, userService, contentStoreFactory)
-    val authorApplicationService = AuthorApplicationService(db, roleAdminService)
-    val authorService = AuthorService(config, db, outboxService, auditService, userService, emailService, contentStoreFactory, cacheService)
-    val adminService = AdminService(config, db, rightService, outboxService, cacheService)
-    val shelfService = ShelfService(db)
-    val statisticsService = StatisticsService(db)
-    val readProgressService = ReadProgressService(db)
-    val systemService = SystemService()
-    val taskManager = TaskManager(monitor, logger)
-
-    val services = Services(
-        cacheService = cacheService,
-        captchaService = captchaService,
-        permissionCache = permissionCache,
-        rightService = rightService,
-        roleAdminService = roleAdminService,
-        emailService = emailService,
-        userService = userService,
-        outboxService = outboxService,
-        auditService = auditService,
-        bookService = bookService,
-        commentService = commentService,
-        authorService = authorService,
-        adminService = adminService,
-        authorApplicationService = authorApplicationService,
-        shelfService = shelfService,
-        statisticsService = statisticsService,
-        readProgressService = readProgressService,
-        systemService = systemService,
-        taskManager = taskManager,
-        contentStoreCompactor = contentStoreCompactor,
+    val ctx = AppContext(
+        config = appConfig,
+        db = databaseManager,
+        redis = redisManager,
+        monitor = monitor,
+        logger = environment.log,
     )
+
+    // 基础设施（最底层，被所有领域依赖）
+    val infra = assembleInfra(ctx)
+    // 权限/管理域（被 user/author 依赖，先于它们装配）
+    val admin = assembleAdmin(ctx, infra)
+    // 用户域
+    val user = assembleUser(ctx, admin)
+    // 书籍/评论域
+    val book = assembleBook(ctx, infra, user)
+    // 作者域
+    val author = assembleAuthor(ctx, infra, admin, user)
+    // 系统域
+    val system = assembleSystem(infra)
+
+    val services = Services(infra, user, book, admin, author, system)
     attributes[ServicesKey] = services
 
-    // 保留原 registerRightService 的行为：应用启动后预加载权限/角色数据
+    // 应用启动后预加载权限/角色数据
     monitor.subscribe(ApplicationStarted) {
-        runBlocking(Dispatchers.Default) { permissionCache.start() }
+        runBlocking(Dispatchers.Default) { admin.permissionCache.start() }
     }
     return services
 }
+
+private fun assembleInfra(ctx: AppContext): InfraServices {
+    val contentStoreFactory = ContentStoreFactory(ctx.config)
+    // 动态配置：Redis 源 + 本地缓存服务；变更通知回调绑定到 ConfigService.invalidate
+    val configSource = RedisConfigSource(ctx.redis, ctx.logger)
+    val configService = ConfigService(configSource)
+    configSource.onChange = configService::invalidate
+    return InfraServices(
+        cacheService = CacheService(ctx.logger, ctx.redis),
+        emailService = EmailService(ctx.config, ctx.logger),
+        outboxService = OutboxService(ctx.config, ctx.db, ctx.logger, contentStoreFactory),
+        contentStoreFactory = contentStoreFactory,
+        contentStoreCompactor = ContentStoreCompactor(ctx.config, configService, ctx.logger),
+        configService = configService,
+        configSource = configSource,
+        taskManager = TaskManager(ctx.monitor, ctx.logger),
+    )
+}
+
+private fun assembleAdmin(ctx: AppContext, infra: InfraServices): AdminServices {
+    val permissionCache = PermissionCache(ctx.config, ctx.db, ctx.logger)
+    val rightService = RightService(permissionCache, ctx.db)
+    val roleAdminService = RoleAdminService(permissionCache, ctx.db)
+    val auditService = AuditService(ctx.config, ctx.db, infra.contentStoreFactory)
+    val adminService = AdminService(ctx.config, ctx.db, rightService, infra.outboxService, infra.cacheService)
+    return AdminServices(permissionCache, rightService, roleAdminService, adminService, auditService)
+}
+
+private fun assembleUser(ctx: AppContext, admin: AdminServices): UserServices {
+    val captchaService = CaptchaService(ctx.config, ctx.redis)
+    val userService = UserService(ctx.config, ctx.db, admin.rightService, captchaService)
+    return UserServices(userService, captchaService)
+}
+
+private fun assembleBook(ctx: AppContext, infra: InfraServices, user: UserServices): BookServices {
+    val bookService = BookService(ctx.config, ctx.db, infra.cacheService, infra.contentStoreFactory)
+    val commentService = CommentService(ctx.config, ctx.db, infra.outboxService, user.userService, infra.contentStoreFactory)
+    return BookServices(
+        bookService = bookService,
+        commentService = commentService,
+        shelfService = ShelfService(ctx.db),
+        statisticsService = StatisticsService(ctx.db),
+        readProgressService = ReadProgressService(ctx.db),
+    )
+}
+
+private fun assembleAuthor(
+    ctx: AppContext,
+    infra: InfraServices,
+    admin: AdminServices,
+    user: UserServices,
+): AuthorServices {
+    val authorApplicationService = AuthorApplicationService(ctx.db, admin.roleAdminService)
+    val authorService = AuthorService(
+        ctx.config, ctx.db, infra.outboxService, admin.auditService,
+        user.userService, infra.emailService, infra.contentStoreFactory, infra.cacheService,
+    )
+    return AuthorServices(authorService, authorApplicationService)
+}
+
+private fun assembleSystem(infra: InfraServices): SystemServices =
+    SystemServices(SystemService(), SystemConfigService(infra.configService))
 
 private val ServicesKey = AttributeKey<Services>("Services")
 

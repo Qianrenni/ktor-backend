@@ -9,6 +9,7 @@ import io.lettuce.core.RedisClient
 import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.codec.StringCodec
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection
 import java.time.Duration
 
 /**
@@ -55,6 +56,14 @@ class RedisManager(config: AppConfig) {
     fun isConnected(): Boolean {
         return connection?.isOpen == true
     }
+
+    /**
+     * 创建独立的发布订阅连接（动态配置变更通知用）。
+     * 与普通命令连接相互独立，订阅期间不阻塞业务命令。
+     */
+    fun connectPubSub(): StatefulRedisPubSubConnection<String, String> =
+        redisClient?.connectPubSub(StringCodec.UTF8)
+            ?: throw IllegalStateException("Redis client not initialized")
 
     fun close() {
         connection?.close()

@@ -12,6 +12,7 @@ import com.qianrenni.modules.book.shelf
 import com.qianrenni.modules.book.statistics
 import com.qianrenni.modules.book.userReadingProgress
 import com.qianrenni.modules.system.system
+import com.qianrenni.modules.system.systemConfig
 import com.qianrenni.modules.user.auth
 import com.qianrenni.modules.user.captcha
 import com.qianrenni.modules.user.user
@@ -25,22 +26,23 @@ fun Application.configureRouting() {
     val services = this.services
     routing {
         staticFiles("/static", File(appConfig.staticDir))
-        captcha(services.captchaService)
-        auth(services.userService, services.cacheService, services.emailService)
-        user(services.userService, services.captchaService, services.cacheService, services.emailService)
-        book(services.bookService)
-        userReadingProgress(services.readProgressService)
-        statistics(services.statisticsService)
-        shelf(services.shelfService)
-        adminAudit(services.auditService)
-        adminPermission(services.rightService, services.roleAdminService)
-        adminUser(services.adminService, services.roleAdminService)
-        adminBook(services.adminService)
-        comment(services.commentService)
-        author(services.authorService, services.authorApplicationService)
-        system(services.systemService)
+        captcha(services.user.captchaService)
+        auth(services.user.userService, services.infra.cacheService, services.infra.emailService)
+        user(services.user.userService, services.user.captchaService, services.infra.cacheService, services.infra.emailService)
+        book(services.book.bookService)
+        userReadingProgress(services.book.readProgressService)
+        statistics(services.book.statisticsService)
+        shelf(services.book.shelfService)
+        adminAudit(services.admin.auditService)
+        adminPermission(services.admin.rightService, services.admin.roleAdminService)
+        adminUser(services.admin.adminService, services.admin.roleAdminService)
+        adminBook(services.admin.adminService)
+        comment(services.book.commentService)
+        author(services.author.authorService, services.author.authorApplicationService)
+        system(services.system.systemService)
+        systemConfig(services.system.systemConfigService)
         if (appConfig.environment == "dev") {
-            test(services.emailService)
+            test(services.infra.emailService)
         }
     }
 

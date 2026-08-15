@@ -41,7 +41,7 @@ suspend fun ApplicationCall.getCurrentUser(): FullUser {
     val subject = principal.payload.subject ?: throw PermissionDeniedException("无效的用户信息")
     return try {
         val userId = subject.toInt()
-        val user = application.services.userService.getUserById(userId)
+        val user = application.services.user.userService.getUserById(userId)
         attributes.put(UserAttributeKey, user)
         user
     } catch (e: Exception) {
@@ -61,7 +61,7 @@ suspend fun ApplicationCall.requirePermission(
     permissions: List<String>
 ): FullUser {
     val user = this.getCurrentUser()
-    val hasPermission = this.application.services.rightService.checkPermission(
+    val hasPermission = this.application.services.admin.rightService.checkPermission(
         permissions,
         user.right
     )

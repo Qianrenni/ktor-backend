@@ -13,9 +13,9 @@
 
 ```
 src/main/kotlin/com/qianrenni/
-├── bootstrap/       # 应用入口、路由装配、服务组合根（Application.configService / Services）
-├── common/          # 通用：AppConfig、ResponseModel、web/（权限/HTTP/限流）、util/
-├── infrastructure/  # 基础设施：cache、database、mail、outbox、storage、task
+├── bootstrap/       # 应用入口、路由装配、服务组合根（Application.configService / ServiceGroups）
+├── common/          # 通用：AppConfig、config/（动态配置）、ResponseModel、web/（权限/HTTP/限流）、util/
+├── infrastructure/  # 基础设施：cache、config/（Redis 配置源）、database、mail、outbox、storage、task
 ├── models/          # domain/（领域对象）、tables/（Exposed 表定义）
 └── modules/         # 业务模块：admin、author、book、system、user
 src/test/kotlin/com/qianrenni/   # 测试（镜像 main 结构，使用 H2 内存库）
@@ -24,9 +24,14 @@ src/test/kotlin/com/qianrenni/   # 测试（镜像 main 结构，使用 H2 内�
 ## 核心开发约定（必须遵守）
 
 - **分层**：Controller（`Routing` 扩展函数：参数绑定/权限/响应）→ Service（业务逻辑）→ 基础设施。
-- **依赖注入**：采用**手工组合根**。Service 构造函数参数即其全部依赖；新增 Service 需在
-  `ServiceRegistrar.kt` 的 `Application.configService()` 中装配、并在 `Services.kt` 中登记。
+- **依赖注入**：采用**手工组合根 + 领域分组**。Service 构造函数参数即其全部依赖；领域组定义在
+  `bootstrap/ServiceGroups.kt`（Infra/User/Book/Admin/Author/System），新增 Service 需在
+  `ServiceRegistrar.kt` 对应 `assembleXxx()` 中装配并加入所属领域组。访问约定
+  `services.<group>.<service>`（如 `services.infra.cacheService`）。
   **禁止** Service 注入整个 `Application` 或运行时从 `attributes` 按需取依赖（旧 service-locator 写法）。
+- **动态配置**：可运行期调整的配置走 Redis 配置中心（`common/config/` + `infrastructure/config/`），
+  通过管理 API `GET/PUT /system/config/{domain}` 修改，多实例经 Redis Pub/Sub 失效本地缓存，
+  缺省默认值兜底。静态敏感项（DSN/密钥等）仍走 `AppConfig` 环境变量，不进动态区。详见 `ai-doc/08-config.md`。
 - **API**：统一返回 `com.qianrenni.common.ResponseModel`；请求/响应 DTO 用 `@Serializable data class`；
   需登录的路由包 `authenticate("auth-jwt")`；权限用 `call.requirePermission(...)` +
   `generatePermissionCode(resource, action, scope)`。
@@ -47,6 +52,7 @@ src/test/kotlin/com/qianrenni/   # 测试（镜像 main 结构，使用 H2 内�
 | 构建、运行、配置环境 | `ai-doc/05-build-run.md` |
 | 提交代码（生成 commit message） | `ai-doc/06-committing.md` |
 | 编译/测试/提交报错排查 | `ai-doc/07-troubleshooting.md` |
+| 动态配置（新增/修改可调配置项） | `ai-doc/08-config.md` |
 
 ## Commit Message 规范（必须遵守）
 

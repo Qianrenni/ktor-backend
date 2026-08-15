@@ -18,7 +18,7 @@ class TestTask {
     fun testAggregateHourlyStatistics() = testApplication {
         configure()
         client.get("/")
-        application.services.statisticsService.aggregateUserReadStatistics(
+        application.services.book.statisticsService.aggregateUserReadStatistics(
             LocalDateTime.now().truncatedTo(ChronoUnit.HOURS)
         )
     }

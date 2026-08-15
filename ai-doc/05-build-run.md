@@ -16,7 +16,10 @@
 ## 配置
 
 - 主配置：`src/main/resources/application.conf`（Ktor 配置）。
-- 环境变量/密钥：仓库根 `.env`（参考 `.env.example`），启动时由 bootstrap 读取（`common/AppConfig`）。
+- **静态配置**（启动时读取、重启生效、含敏感项）：环境变量/密钥在仓库根 `.env`（参考 `.env.example`），
+  由 `common/AppConfig` 读取。
+- **动态配置**（运行期可调，无需重启）：存于 Redis 配置中心（key `config:{domain}`），
+  通过管理 API `GET/PUT /system/config/{domain}` 修改，多实例经 Pub/Sub 失效，默认值兜底。见 `08-config.md`。
 - 日志：`src/main/resources/logback.xml`。
 - 端口默认 8080；改端口/环境通过配置或环境变量，勿硬编码。
 

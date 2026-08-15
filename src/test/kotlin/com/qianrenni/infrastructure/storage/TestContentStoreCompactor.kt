@@ -1,6 +1,9 @@
 package com.qianrenni.infrastructure.storage
 
 import com.qianrenni.common.AppConfig
+import com.qianrenni.common.config.ConfigDomain
+import com.qianrenni.common.config.ConfigService
+import com.qianrenni.testutil.InMemoryConfigSource
 import kotlinx.coroutines.test.runTest
 import org.slf4j.LoggerFactory
 import kotlin.io.path.ExperimentalPathApi
@@ -40,12 +43,19 @@ class TestContentStoreCompactor {
     private fun syncFor(storeDir: String, name: String): ContentStoreSync =
         ContentStoreManager.getOrCreateSync(name, Path(config.contentDir, storeDir).toString())
 
-    /** 测试用低阈值配置：排除 minLiveBytes / maxFileBytes 干扰，聚焦垃圾占比筛选 */
-    private fun compactorConfig(): AppConfig = config.copy(
-        contentStoreCompactGarbageThreshold = 0.4,
-        contentStoreCompactMinLiveBytes = 1,
-        contentStoreCompactMaxFileBytes = Long.MAX_VALUE
-    )
+    /** 测试用 compactor：动态配置注入低阈值，聚焦垃圾占比筛选 */
+    private fun compactor(): ContentStoreCompactor {
+        val source = InMemoryConfigSource(
+            mapOf(
+                ConfigDomain.COMPACT to mapOf(
+                    "garbageThreshold" to "0.4",
+                    "minLiveBytes" to "1",
+                    "maxFileBytes" to Long.MAX_VALUE.toString()
+                )
+            )
+        )
+        return ContentStoreCompactor(config, ConfigService(source), logger)
+    }
 
     // ================= 指标与阈值判断 =================
 
@@ -95,7 +105,7 @@ class TestContentStoreCompactor {
         val dirtySizeBefore = dataFile("book", "1").length()
         val cleanSizeBefore = dataFile("book", "2").length()
 
-        val compactor = ContentStoreCompactor(compactorConfig(), logger)
+        val compactor = compactor()
         val compacted = compactor.compactAll()
 
         assertEquals(1, compacted, "只应整理脏 store")
@@ -119,7 +129,7 @@ class TestContentStoreCompactor {
             s.update(2, "c2")
         }
 
-        val compactor = ContentStoreCompactor(compactorConfig(), logger)
+        val compactor = compactor()
         val compacted = compactor.compactAll(force = true)
 
         assertEquals(1, compacted, "force 应整理健康 store")
@@ -132,7 +142,7 @@ class TestContentStoreCompactor {
 
     @Test
     fun `无 store 时返回 0`() = runTest {
-        val compactor = ContentStoreCompactor(compactorConfig(), logger)
+        val compactor = compactor()
         assertEquals(0, compactor.compactAll())
     }
 
@@ -140,7 +150,7 @@ class TestContentStoreCompactor {
     fun `compactAll 后同步单元引用计数归零`() = runTest {
         openStore("book", "9").use { s -> s.update(1, "x") }
 
-        ContentStoreCompactor(compactorConfig(), logger).compactAll(force = true)
+        compactor().compactAll(force = true)
 
         assertFalse(
             ContentStoreManager.containsSync("9", Path(config.contentDir, "book").toString()),

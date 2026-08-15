@@ -293,12 +293,12 @@ suspend fun <T> Application.cache(
     serializer: KSerializer<T>,
     block: suspend () -> T
 ): T {
-    return this.services.cacheService.cacheGetInternal(
+    return this.services.infra.cacheService.cacheGetInternal(
         expire = expire,
         ignoreNull = ignoreNull,
         lockTimeout = lockTimeout,
         fallbackFunc = block,
-        cacheKey = this.services.cacheService.generateCacheKey(args = args, excludeArgs = excludeArgs, keyPrefix = keyPrefix),
+        cacheKey = this.services.infra.cacheService.generateCacheKey(args = args, excludeArgs = excludeArgs, keyPrefix = keyPrefix),
         serializer = serializer,
     )
 }
@@ -313,12 +313,12 @@ suspend fun <T> RoutingContext.cache(
     serializer: KSerializer<T>,
     block: suspend () -> T
 ): T {
-    return call.application.services.cacheService.cacheGetInternal(
+    return call.application.services.infra.cacheService.cacheGetInternal(
         expire = expire,
         ignoreNull = ignoreNull,
         lockTimeout = lockTimeout,
         fallbackFunc = block,
-        cacheKey = call.application.services.cacheService.generateCacheKey(
+        cacheKey = call.application.services.infra.cacheService.generateCacheKey(
             args = args,
             excludeArgs = excludeArgs,
             keyPrefix = keyPrefix

@@ -32,11 +32,16 @@ fun Application.main() {
     configureMetrics()
     // 4. 装配服务组合根（必须在 configureRouting 之前：路由通过参数注入获取服务）
     configService()
-    // 5. 启动 Outbox channel 消费（先消费遗留记录，再监听事务提交信号）
-    services.outboxService.start()
-    // 6. 注册路由
+    // 5. 启动动态配置变更订阅（Redis Pub/Sub，多实例本地缓存失效）
+    services.infra.startConfigSubscription()
+    monitor.subscribe(ApplicationStopped) {
+        services.infra.stopConfigSubscription()
+    }
+    // 6. 启动 Outbox channel 消费（先消费遗留记录，再监听事务提交信号）
+    services.infra.outboxService.start()
+    // 7. 注册路由
     configureRouting()
-    // 7. 注册并启动定时任务
+    // 8. 注册并启动定时任务
     configureScheduledTasks()
 }
 
@@ -44,7 +49,7 @@ fun Application.main() {
  * 配置定时任务
  */
 private fun Application.configureScheduledTasks() {
-    services.taskManager.apply {
+    services.infra.taskManager.apply {
         // 每小时整点执行统计聚合（秒 分 时 日 月 周）
         register(
             TaskConfig(
@@ -52,7 +57,7 @@ private fun Application.configureScheduledTasks() {
                 cronExpression = "0 5 * * * ?"
             ) { triggerTime ->
                 val hourEnd = triggerTime.toLocalDateTime().truncatedTo(ChronoUnit.HOURS)
-                services.statisticsService.aggregateUserReadStatistics(hourEnd)
+                services.book.statisticsService.aggregateUserReadStatistics(hourEnd)
             }
         )
         register(
@@ -61,8 +66,8 @@ private fun Application.configureScheduledTasks() {
                 cronExpression = "0 30 * * * ?"
             ) {
                 // 先消费待处理文件操作，确保发布读取到最新章节内容
-                services.outboxService.processPending()
-                services.bookService.publishBook()
+                services.infra.outboxService.processPending()
+                services.book.bookService.publishBook()
             }
         )
         register(
@@ -71,8 +76,8 @@ private fun Application.configureScheduledTasks() {
                 cronExpression = "0 40 * * * ?"
             ) {
                 // 先消费待处理文件操作，确保发布读取到最新章节内容
-                services.outboxService.processPending()
-                services.bookService.publishReviewTimeoutBooks()
+                services.infra.outboxService.processPending()
+                services.book.bookService.publishReviewTimeoutBooks()
             }
         )
         register(
@@ -82,7 +87,7 @@ private fun Application.configureScheduledTasks() {
                 // 覆盖进程重启遗留（start 已处理）、信号丢失、多实例间他实例写入等场景
                 cronExpression = "0 * * * * ?"
             ) {
-                services.outboxService.processPending()
+                services.infra.outboxService.processPending()
             }
         )
         // 内容存储自动 compact：定时扫描 + 垃圾占比阈值过滤（见 ContentStoreCompactor）
@@ -92,7 +97,7 @@ private fun Application.configureScheduledTasks() {
                     name = "内容存储自动compact",
                     cronExpression = appConfig.contentStoreCompactCron
                 ) {
-                    services.contentStoreCompactor.compactAll()
+                    services.infra.contentStoreCompactor.compactAll()
                 }
             )
         }

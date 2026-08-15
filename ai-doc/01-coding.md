@@ -7,9 +7,9 @@
 - `modules/<domain>/` — 业务代码（Controller / Service），按领域拆分：`admin`、`author`、`book`、`system`、`user`。
 - `models/domain/` — 领域对象（data class、枚举）。
 - `models/tables/` — Exposed 表定义。
-- `common/` — 跨模块通用：`AppConfig`、`ResponseModel`、`web/`（权限/HTTP/限流）、`util/`。
-- `infrastructure/` — 基础设施：cache、database、mail、outbox、storage、task。
-- `bootstrap/` — 入口与装配（Routing、ServiceRegistrar、Services）。
+- `common/` — 跨模块通用：`AppConfig`、`config/`（动态配置）、`ResponseModel`、`web/`（权限/HTTP/限流）、`util/`。
+- `infrastructure/` — 基础设施：cache、config/（Redis 配置源）、database、mail、outbox、storage、task。
+- `bootstrap/` — 入口与装配（Routing、ServiceRegistrar、ServiceGroups 领域组）。
 
 ## 分层职责（必须遵守）
 
@@ -25,9 +25,11 @@ Controller (Routing 扩展)  →  Service (业务逻辑)  →  基础设施 / �
 ## 新增业务模块的步骤
 
 1. 在 `modules/<domain>/` 新建 `XxxService.kt`（业务逻辑）与 `XxxController.kt`（`Routing` 扩展函数）。
-2. **登记依赖**（手工组合根，双文件缺一不可）：
-   - `bootstrap/ServiceRegistrar.kt` 的 `Application.configService()` 中构造该 Service 并注入其依赖；
-   - `bootstrap/Services.kt` 的 `Services` 类中新增属性，并在 `configService()` 的构造处传值。
+2. **登记依赖**（手工组合根 + 领域分组，见 `bootstrap/ServiceGroups.kt`）：
+   - 判断该 Service 归属领域（Infra/User/Book/Admin/Author/System）；
+   - 在 `bootstrap/ServiceRegistrar.kt` 对应 `assembleXxx()` 中构造并注入依赖；
+   - 把 Service 加入 `bootstrap/ServiceGroups.kt` 中对应领域组类。
+   - 调用侧按 `services.<group>.<service>` 访问。
 3. Controller 通过函数参数拿到所需 Service（参考 `UserController.kt`），并在路由装配处调用该扩展。
 4. 如需持久化：见 `02-database.md`。
 5. 如需对外接口：见 `03-api.md`。
@@ -49,7 +51,8 @@ Controller (Routing 扩展)  →  Service (业务逻辑)  →  基础设施 / �
 
 ## 检查清单
 
-- [ ] Service 是否在 `ServiceRegistrar.kt` + `Services.kt` 双处登记？
+- [ ] Service 是否加入 `ServiceGroups.kt` 对应领域组并在 `ServiceRegistrar.kt` 的 `assembleXxx` 中装配？
 - [ ] 没有注入整个 `Application`、没有从 `attributes` 运行时取依赖？
+- [ ] 需要运行期可调的参数是否走动态配置（`common/config/`，见 `08-config.md`）？
 - [ ] `./gradlew build` 编译通过？
 - [ ] 相关测试 `./gradlew test` 通过？

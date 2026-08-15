@@ -6,7 +6,8 @@
 
 - 读完整错误栈，定位到具体文件与行号；`./gradlew build --stacktrace` 可看更详细栈。
 - 编译错误多为：导入缺失、类型不匹配、签名改动未同步调用点、Exposed 表/查询类型错误。
-- 改了方法签名 → 用「查找引用」同步所有调用点与测试；`Service` 依赖变动 → 同步 `ServiceRegistrar.kt` + `Services.kt`。
+- 改了方法签名 → 用「查找引用」同步所有调用点与测试；`Service` 依赖变动 → 同步
+  `ServiceRegistrar.kt` 的 `assembleXxx` + `ServiceGroups.kt` 对应领域组。
 - 参考：`01-coding.md`、`05-build-run.md`。
 
 ## 测试失败
@@ -25,7 +26,9 @@
 
 - **MySQL / Redis 连接失败**：检查 `.env` 中连接串、服务是否启动、端口是否正确（`05-build-run.md`）。
 - 端口被占用：8080 被占 → 换端口或停掉占用进程。
-- 接口报错：确认路由已挂载、Service 已在 `Services` 登记、权限枚举有效（`03-api.md`）。
+- 接口报错：确认路由已挂载、Service 已在对应领域组登记、权限枚举有效（`03-api.md`）。
+- 动态配置读不到 / 改了不生效：确认 Redis 可连接、`/system/config/{domain}` 写入成功、Pub/Sub 订阅正常；
+  订阅失败不影响启动（回退默认值兜底），见 `08-config.md`。
 - 看日志：`logs/` 与控制台输出（`logback.xml` 配置了日志级别）。
 
 ## 通用排查步骤

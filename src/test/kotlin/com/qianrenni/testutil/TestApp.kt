@@ -57,7 +57,7 @@ fun Application.testConfigure() {
     // 装配服务组合根（SystemService 等已由组合根统一创建）
     configService()
     // OutboxService 只注册【不启动】channel 消费循环 —— 测试手动调用
-    // `application.services.outboxService.processPending()` 以确定性方式断言双写
+    // `application.services.infra.outboxService.processPending()` 以确定性方式断言双写
 }
 
 /** 测试用全部表，按 FK 依赖顺序排列（父表在前） */
