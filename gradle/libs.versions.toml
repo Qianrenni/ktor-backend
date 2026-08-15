@@ -1,0 +1,36 @@
+[versions]
+kotlin = "2.3.21"
+logback = "1.5.21"
+exposed = "0.59.0"
+lettuce = "6.7.1.RELEASE"
+hikaricp = "6.3.0"
+mysql = "9.3.0"
+jwt = "4.5.0"
+bcrypt = "0.10.2"
+[libraries]
+# Ktor 核心和插件
+flaxoos-ktor-server-rateLimiting = { module = "io.github.flaxoos:ktor-server-rate-limiting", version = "2.2.1" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+ucasoft-ktorSimpleCache = { module = "com.ucasoft.ktor:ktor-simple-cache", version = "0.59.4" }
+ucasoft-ktorSimpleMemoryCache = { module = "com.ucasoft.ktor:ktor-simple-memory-cache", version = "0.59.4" }
+
+# 数据库相关
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+mysql-connector = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+
+# Redis
+lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+
+# JWT 认证
+jwt-api = { module = "com.auth0:java-jwt", version.ref = "jwt" }
+
+# 密码哈希
+bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

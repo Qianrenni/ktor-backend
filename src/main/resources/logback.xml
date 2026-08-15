@@ -1,0 +1,49 @@
+<configuration>
+
+    <!-- ========== 控制台 Appender（同步） ========== -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ========== 文件 Appender（同步，被异步包装） ========== -->
+    <appender name="FILE_SYNC" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+        <file>logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/app-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ========== 异步 Appender（包装 FILE_SYNC） ========== -->
+    <appender name="FILE_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- 队列大小，默认 256，可根据吞吐量调大 -->
+        <queueSize>512</queueSize>
+        <!-- 当队列满 80% 时丢弃 TRACE、DEBUG 级别，保留 INFO 及以上（默认行为） -->
+        <discardingThreshold>0</discardingThreshold> <!-- 设为 0 表示不丢弃，但队列满会阻塞 -->
+        <!-- 是否在应用关闭时等待队列中的日志被写入（建议 true） -->
+        <neverBlock>true</neverBlock> <!-- false 表示当队列满时阻塞主线程，保护日志不丢失 -->
+        <!-- 引用被包装的同步 appender -->
+        <appender-ref ref="FILE_SYNC"/>
+    </appender>
+
+    <!-- ========== 根日志级别 ========== -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE_ASYNC"/>   <!-- 使用异步版本 -->
+    </root>
+
+    <!-- ========== 第三方库的级别控制 ========== -->
+    <logger name="org.eclipse.jetty" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+</configuration>

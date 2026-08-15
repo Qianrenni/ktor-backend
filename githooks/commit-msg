@@ -1,0 +1,7 @@
+#!/bin/sh
+# commit-msg hook：使用 Node 脚本校验 Conventional Commits 格式。
+# 依赖：Node.js（node 需在 PATH 中）。不通过则退出码 1，阻止本次提交。
+# 说明：由 `git config core.hooksPath githooks` 启用；团队其他成员 clone 后需执行同一条命令。
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+node "$SCRIPT_DIR/commitlint.js" "$1" || exit 1
