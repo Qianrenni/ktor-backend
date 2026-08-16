@@ -44,7 +44,8 @@ class TestAuthorService {
     fun `createBook 创建待提交书籍并绑定作者与封面`() = withTestApplication {
         val authorId = TestUsers.userIds.getValue(TestUsers.AUTHOR_NAME)
         val cover = File.createTempFile("cover", ".webp")
-        cover.writeBytes(byteArrayOf(0x52, 0x49, 0x46, 0x46))
+        // 合法 WebP 文件头（RIFF....WEBP），满足封面上传的魔数校验
+        cover.writeBytes(byteArrayOf(0x52, 0x49, 0x46, 0x46, 0x24, 0, 0, 0, 0x57, 0x45, 0x42, 0x50))
 
         authorService.createBook(authorId, "我的新书", "作者", "标签", "描述", "玄幻", cover)
 

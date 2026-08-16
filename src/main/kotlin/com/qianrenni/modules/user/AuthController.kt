@@ -12,6 +12,7 @@ import com.qianrenni.common.util.TokenGenerator
 import io.ktor.http.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -44,7 +45,9 @@ fun Routing.auth(
     cacheService: CacheService,
     emailService: EmailService,
 ) {
-    route("/token") {
+    // 安全加固（M2）：/token 全组按来源 IP 限流（登录/刷新/邮箱验证等公开端点）
+    rateLimit(RateLimitName("ip")) {
+        route("/token") {
         // POST /token/get - 登录获取access_token和refresh_token
         post("/get") {
             val xCaptchaId = call.requireHeader("X-Captcha-Id")
@@ -205,6 +208,7 @@ fun Routing.auth(
                     ResponseModel.Success(data = user)
                 )
             }
+        }
         }
     }
 }

@@ -1,6 +1,11 @@
 package com.qianrenni.common.web
 
+import com.qianrenni.common.ActionEnum
+import com.qianrenni.common.ResourceTypeEnum
+import com.qianrenni.common.ScopeEnum
+import com.qianrenni.modules.admin.generatePermissionCode
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -32,8 +37,20 @@ fun Application.configureMetrics() {
 
     routing {
         // 3. 提供一个接口,让你能直接看到收集到的耗时数据
-        get("/metrics") {
-            call.respondText(prometheusRegistry.scrape())
+        // 安全加固（M4）：/metrics 需认证且具备权限查看，避免暴露内部指标
+        authenticate("auth-jwt") {
+            get("/metrics") {
+                call.requirePermission(
+                    listOf(
+                        generatePermissionCode(
+                            resource = ResourceTypeEnum.PERMISSION,
+                            action = ActionEnum.READ,
+                            scope = ScopeEnum.ALL
+                        )
+                    )
+                )
+                call.respondText(prometheusRegistry.scrape())
+            }
         }
     }
 }

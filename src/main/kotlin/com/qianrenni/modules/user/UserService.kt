@@ -71,13 +71,14 @@ class UserService(
                 .singleOrNull()
         }
         return when(user){
-            null->throw IllegalArgumentException("账号不存在")
+            // 安全加固（L2）：登录错误统一文案，避免账号枚举
+            null->throw IllegalArgumentException("账号或密码错误")
             else -> {
                 if (!user[UserTable.isActive]) {
-                    throw IllegalArgumentException("账号已禁用")
+                    throw IllegalArgumentException("账号已被禁用")
                 }
                 when (PasswordUtils.verify(requestTokenGet.password, user[UserTable.password])) {
-                    false->throw IllegalArgumentException("密码错误")
+                    false->throw IllegalArgumentException("账号或密码错误")
                     else -> {
                         val res = user.toFullUser()
                         val roleIds = rightService.getUserRoles(listOf(res.id))[res.id]?.map { it.roleId }

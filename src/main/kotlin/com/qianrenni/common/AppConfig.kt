@@ -77,7 +77,8 @@ data class AppConfig(
             fun String?.toIntOrDefault(default: Int) = this?.toIntOrNull() ?: default
 
             return AppConfig(
-                environment = env("ENV") ?: "dev",
+                // 安全加固（M1）：默认 fail-closed 为 prod，避免生产漏配 ENV 时暴露 /test 路由与 SQL 日志
+                environment = env("ENV") ?: "prod",
                 allowHost = env("ALLOW_HOST") ?: "localhost",
                 mysqlDsn = env("MYSQL_DSN") ?: "",
                 dbPoolSize = env("DB_POOL_SIZE").toIntOrDefault(20),
@@ -127,5 +128,40 @@ val Application.appConfig: AppConfig
 fun Application.loadConfig() {
     val appConfig = AppConfig.load()
     attributes.put(AppConfigKey, appConfig)
-    log.info(appConfig.toString())
+    // 安全加固（H1）：禁止打印完整 data class（含 mysqlDsn/redisUrl/secretKey/emailCode），改为脱敏输出
+    log.info(
+        "AppConfig loaded: environment={}, allowHost={}, mysqlDsn={}, redisUrl={}, secretKey={}, " +
+            "smtpServer={}, emailAccount={}, emailCode={}",
+        appConfig.environment,
+        appConfig.allowHost,
+        maskDsn(appConfig.mysqlDsn),
+        maskUrl(appConfig.redisUrl),
+        if (appConfig.secretKey.isBlank()) "<blank>" else "<set:${appConfig.secretKey.length} chars>",
+        appConfig.smtpServer,
+        appConfig.emailAccount,
+        if (appConfig.emailCode.isBlank()) "<blank>" else "<set>"
+    )
+}
+
+/** 数据库 DSN 脱敏：隐藏 userinfo 与 password 参数 */
+private fun maskDsn(dsn: String): String {
+    if (dsn.isBlank()) return ""
+    var s = dsn
+    val schemeEnd = s.indexOf("://")
+    if (schemeEnd > 0) {
+        val at = s.indexOf('@', schemeEnd + 3)
+        if (at > 0) s = s.substring(0, schemeEnd + 3) + "***@" + s.substring(at + 1)
+    }
+    return s.replace(Regex("(?i)(password=)[^;&]*"), "$1***")
+}
+
+/** URL（Redis 等）脱敏：隐藏 userinfo 中的密码 */
+private fun maskUrl(url: String): String {
+    if (url.isBlank()) return ""
+    val schemeEnd = url.indexOf("://")
+    if (schemeEnd > 0) {
+        val at = url.indexOf('@', schemeEnd + 3)
+        if (at > 0) return url.substring(0, schemeEnd + 3) + "***@" + url.substring(at + 1)
+    }
+    return url
 }

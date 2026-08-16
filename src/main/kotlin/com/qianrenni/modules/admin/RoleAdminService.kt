@@ -38,6 +38,10 @@ class RoleAdminService(
         val userRolesMap = adminId?.let { getUserRoles(listOf(it, updateUserId)) }
 
         return cache.withLock {
+            // 先解析目标角色：未知角色码保持原语义返回 false
+            val role = cache.roleDict.values.firstOrNull { it.code == roleCode }
+                ?: return@withLock false
+
             // 权限级别校验:使用局部快照保证一致性
             val levels = cache.roleLevels
             adminId?.let {
@@ -46,23 +50,20 @@ class RoleAdminService(
                 val userLevel = p[updateUserId]?.maxOf { ur -> levels[ur.roleId]!! }
                 require(adminLevel != null && userLevel != null) { "用户权限不足" }
                 require(adminLevel >= userLevel) { "权限不足" }
+                // 安全加固（H3）：被授予角色的级别不得高于管理员级别，防止自我/横向提权
+                val targetRoleLevel = levels[role.id] ?: 0
+                require(adminLevel >= targetRoleLevel) { "权限不足，无法授予更高层级角色" }
             }
 
-            // 查找角色并插入
-            val roles = cache.roleDict
-            for (role in roles.values) {
-                if (role.code == roleCode) {
-                    databaseManager.suspendedTransaction {
-                        UserRoleTable.insert {
-                            it[UserRoleTable.userId] = updateUserId
-                            it[UserRoleTable.roleId] = role.id
-                            it[UserRoleTable.grantedBy] = adminId
-                        }
-                    }
-                    return@withLock true
+            // 插入用户角色
+            databaseManager.suspendedTransaction {
+                UserRoleTable.insert {
+                    it[UserRoleTable.userId] = updateUserId
+                    it[UserRoleTable.roleId] = role.id
+                    it[UserRoleTable.grantedBy] = adminId
                 }
             }
-            false
+            true
         }
     }
 

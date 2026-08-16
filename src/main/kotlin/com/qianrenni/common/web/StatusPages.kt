@@ -34,11 +34,12 @@ fun Application.configureStatusPages() {
             call.respond(HttpStatusCode.BadRequest, message = ResponseModel.Error(message = cause.message?:"数据格式错误"))
         }
         exception<Exception> { call, cause ->
+            // 安全加固（M3）：不向客户端回传内部异常信息，仅记录日志
+            call.application.log.error("Unhandled exception: ", cause)
             call.respond(
                 HttpStatusCode.InternalServerError,
-                message = ResponseModel.Error(message = cause.message ?: "服务器内部错误")
+                message = ResponseModel.Error(message = "服务器内部错误")
             )
-            call.application.log.error("Exception: ", cause)
         }
     }
 }

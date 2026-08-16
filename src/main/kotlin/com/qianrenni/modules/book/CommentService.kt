@@ -179,12 +179,29 @@ class CommentService(
         require(line >= 0) { "非法的行号" }
 
         databaseManager.suspendedTransaction {
-            val id = BookChapterCommentTable.insertAndGetId {
-                it[BookChapterCommentTable.chapterId] = chapterId
-                it[BookChapterCommentTable.line] = line
-                it[BookChapterCommentTable.userId] = userId
-                it[BookChapterCommentTable.status] = BookStatus.PUBLISHED
-            }.value
+            // 安全加固（L9）：真正的 UPSERT —— 同章节同行号同用户仅保留一条已发布评论，复用其 contentId
+            val existing = BookChapterCommentTable
+                .selectAll()
+                .where {
+                    (BookChapterCommentTable.chapterId eq chapterId) and
+                            (BookChapterCommentTable.line eq line) and
+                            (BookChapterCommentTable.userId eq userId) and
+                            (BookChapterCommentTable.status eq BookStatus.PUBLISHED)
+                }
+                .orderBy(BookChapterCommentTable.id, SortOrder.DESC)
+                .limit(1)
+                .firstOrNull()
+
+            val id = if (existing != null) {
+                existing[BookChapterCommentTable.id].value
+            } else {
+                BookChapterCommentTable.insertAndGetId {
+                    it[BookChapterCommentTable.chapterId] = chapterId
+                    it[BookChapterCommentTable.line] = line
+                    it[BookChapterCommentTable.userId] = userId
+                    it[BookChapterCommentTable.status] = BookStatus.PUBLISHED
+                }.value
+            }
             // 同一事务内登记评论内容写入，由 Outbox worker 异步执行
             // storeName 使用 chapterId，与读取路径 getChapterComments 保持一致
             outboxService.write(

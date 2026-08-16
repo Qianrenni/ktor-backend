@@ -10,6 +10,7 @@ import com.qianrenni.modules.user.UserService
 import com.qianrenni.modules.author.RequestUpdateBookChapter
 import com.qianrenni.infrastructure.database.DatabaseManager
 import com.qianrenni.common.BookStatus
+import com.qianrenni.common.util.ImageValidator
 import com.qianrenni.models.tables.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,8 @@ class AuthorService(
             }
         }
         bookId?.let {
+            // 安全加固（M6）：校验封面魔数
+            ImageValidator.requireImage(coverFile)
             withContext(Dispatchers.IO) {
                 // 目标目录可能不存在（新书 id），与 AdminService 一致先建目录再复制
                 val coverDir = Path(config.staticDir + "/book/${it.value}")
@@ -174,6 +177,8 @@ class AuthorService(
                 }
 
                 else -> {
+                    // 安全加固（M6）：校验封面魔数
+                    ImageValidator.requireImage(coverFile)
                     val coverDir = Path(config.staticDir + "/book/${targetId}")
                     coverDir.toFile().mkdirs()
                     coverFile.copyTo(

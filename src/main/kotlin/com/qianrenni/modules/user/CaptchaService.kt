@@ -12,6 +12,14 @@ class CaptchaService(
     private val config: AppConfig,
     private val redisManager: RedisManager,
 ) {
+    companion object {
+        /** 验证码最大尝试次数（超过后作废，防暴力破解） */
+        const val MAX_VERIFY_ATTEMPTS = 5
+
+        /** 失败计数窗口（秒） */
+        const val MAX_VERIFY_ATTEMPTS_WINDOW_SECONDS = 600L
+    }
+
     /**
      * 生成随机验证码文本
      * @param length 验证码长度,默认4
@@ -77,7 +85,18 @@ class CaptchaService(
         val cachedAnswer = redis.get(keyPrefix).await() ?: return false
         if (answer == cachedAnswer) {
             redis.del(keyPrefix).await()
+            redis.del("$keyPrefix:attempts").await()
             return true
+        }
+        // 安全加固（L3）：失败计数，达到上限后作废验证码并清空计数，防止暴力破解
+        val attemptsKey = "$keyPrefix:attempts"
+        val attempts = redis.incr(attemptsKey).await().toInt()
+        if (attempts == 1) {
+            redis.expire(attemptsKey, MAX_VERIFY_ATTEMPTS_WINDOW_SECONDS).await()
+        }
+        if (attempts >= MAX_VERIFY_ATTEMPTS) {
+            redis.del(keyPrefix).await()
+            redis.del(attemptsKey).await()
         }
         return false
     }

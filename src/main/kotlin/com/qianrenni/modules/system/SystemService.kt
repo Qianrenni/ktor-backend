@@ -114,7 +114,12 @@ class SystemService {
         page: Int = 1,
         size: Int = 100
     ): PageResult<LogEntry> = withContext(Dispatchers.IO) {
-        val logFile = File("logs", fileName)
+        // 安全加固（H2）：规范化路径，仅允许读取 logs 目录内的 .log 文件，防止路径穿越
+        val logDir = File("logs").canonicalFile
+        val logFile = File(logDir, fileName).canonicalFile
+        if (!logFile.path.startsWith(logDir.path + File.separator) || logFile.extension != "log") {
+            throw IllegalArgumentException("非法文件名")
+        }
         if (!logFile.exists() || !logFile.isFile) {
             return@withContext PageResult(items = emptyList(), total = 0, page = page, size = size)
         }

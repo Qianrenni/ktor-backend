@@ -10,7 +10,8 @@ val ResponseTimePlugin = createApplicationPlugin("ResponseTime") {
     onCallRespond { call, _ ->
         val status = call.response.status()?.value ?: "200"
         val method = call.request.httpMethod.value
-        val uri = call.request.uri
-        call.application.log.info("[{}] {} {}", status, method, uri)
+        // 安全加固（M5）：仅记录 path，避免查询参数（token/验证码/邮箱等）进入日志
+        val path = call.request.path()
+        call.application.log.info("[{}] {} {}", status, method, path)
     }
 }

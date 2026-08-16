@@ -5,6 +5,7 @@ import com.qianrenni.common.ResourceTypeEnum
 import com.qianrenni.common.ScopeEnum
 import com.qianrenni.common.web.PermissionCheck
 import com.qianrenni.common.web.getCurrentUser
+import com.qianrenni.common.web.requirePermission
 import com.qianrenni.common.ResponseModel
 import com.qianrenni.modules.author.AuthorApplicationService
 import com.qianrenni.modules.author.AuthorService
@@ -54,29 +55,24 @@ fun Routing.author(
     route("/author") {
         authenticate("auth-jwt") {
             route("/count") {
-                install(PermissionCheck) {
-                    requiredPermissions = listOf(
-                        generatePermissionCode(
-                            resource = ResourceTypeEnum.USER, action = ActionEnum.READ, scope = ScopeEnum.ALL
+                get {
+                    // 安全加固（M7）：改用显式权限校验，避免组级 PermissionCheck 作用域错误
+                    call.requirePermission(
+                        listOf(
+                            generatePermissionCode(
+                                resource = ResourceTypeEnum.USER, action = ActionEnum.READ, scope = ScopeEnum.ALL
+                            )
                         )
                     )
-                }
-                get {
-
                     val result = authorService.getAuthorCount()
                     call.respond(ResponseModel.Success(result))
                 }
             }
-            // GET /author/count - 获取作者数量
-            install(PermissionCheck) {
-                requiredPermissions = listOf(
-                    generatePermissionCode(
-                        resource = ResourceTypeEnum.BOOK, action = ActionEnum.CREATE, scope = ScopeEnum.OWN
-                    )
-                )
-            }
             // GET /author/book - 获取作者图书列表
             get("/book") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.READ, ScopeEnum.ALL))
+                )
                 val user = call.getCurrentUser()
                 val bookIds = call.request.queryParameters.getAll("id")?.map { it.toInt() } ?: emptyList()
                 val result = authorService.getBook(userId = user.id, bookIds = bookIds)
@@ -85,6 +81,9 @@ fun Routing.author(
 
             // POST /author/book - 创建作者图书
             post("/book") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.CREATE, ScopeEnum.OWN))
+                )
                 val user = call.getCurrentUser()
                 val multipartData = call.receiveMultipart(formFieldLimit = 1024 * 1024)
                 var bookName: String? = null
@@ -162,6 +161,9 @@ fun Routing.author(
 
             // PATCH /author/book - 更新作者图书
             patch("/book") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.UPDATE, ScopeEnum.OWN))
+                )
                 val user = call.getCurrentUser()
                 val multipartData = call.receiveMultipart(formFieldLimit = 1024 * 1024)
                 var bookName: String? = null
@@ -245,6 +247,9 @@ fun Routing.author(
 
             // DELETE /author/book - 删除作者图书
             delete("/book") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.DELETE, ScopeEnum.OWN))
+                )
                 val user = call.getCurrentUser()
                 val bookId = call.requireQueryParameter("id").toInt()
                 authorService.deleteBook(userId = user.id, bookId = bookId)
@@ -253,6 +258,9 @@ fun Routing.author(
 
             // GET /author/chapter - 获取作者图书章节
             get("/chapter") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.READ, ScopeEnum.ALL))
+                )
                 val user = call.getCurrentUser()
                 val bookId = call.requireQueryParameter("bookId").toInt()
                 val chapterId = call.request.queryParameters.getAll("chapterId")?.map { it.toInt() }
@@ -266,6 +274,9 @@ fun Routing.author(
 
             // PATCH /author/chapter - 更新作者图书章节
             patch("/chapter") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.UPDATE, ScopeEnum.OWN))
+                )
                 val user = call.getCurrentUser()
                 val requestUpdateBookChapter = call.receive<RequestUpdateBookChapter>()
                 authorService.updateBookChapter(
@@ -277,6 +288,9 @@ fun Routing.author(
 
             // DELETE /author/chapter - 删除作者图书章节
             delete("/chapter") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.DELETE, ScopeEnum.OWN))
+                )
                 val user = call.getCurrentUser()
                 val chapterId = call.requireQueryParameter("chapterId").toInt()
                 val bookId = call.requireQueryParameter("bookId").toInt()
@@ -290,6 +304,9 @@ fun Routing.author(
 
             // GET /author/book-statistics - 获取作者图书阅读数据
             get("/book-statistics") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.READ, ScopeEnum.ALL))
+                )
                 val user = call.getCurrentUser()
                 val bookId = call.requireQueryParameter("bookId").toInt()
                 val result = authorService.getBookReadStatistic(userId = user.id, bookId = bookId)
@@ -298,6 +315,9 @@ fun Routing.author(
 
             // GET /author/content - 获取章节内容
             get("/content") {
+                call.requirePermission(
+                    listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.READ, ScopeEnum.ALL))
+                )
                 val user = call.getCurrentUser()
                 val chapterIds = call.request.queryParameters.getAll("chapterId")?.map { it.toInt() } ?: emptyList()
                 val bookId = call.requireQueryParameter("bookId").toInt()
@@ -312,6 +332,9 @@ fun Routing.author(
             // GET /author/draft/chapter - 获取草稿章节
             route("/draft") {
                 get("/chapter") {
+                    call.requirePermission(
+                        listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.READ, ScopeEnum.ALL))
+                    )
                     val user = call.getCurrentUser()
                     val result = authorService.getDraftChapter(userId = user.id)
                     call.respond(ResponseModel.Success(result))
@@ -320,6 +343,9 @@ fun Routing.author(
             route("/status") {
                 // PATCH /author/status/chapter - 更新章节状态
                 patch("chapter") {
+                    call.requirePermission(
+                        listOf(generatePermissionCode(ResourceTypeEnum.CHAPTER, ActionEnum.UPDATE, ScopeEnum.OWN))
+                    )
                     val user = call.getCurrentUser()
                     val bookId = call.requireQueryParameter("bookId").toInt()
                     val chapterId = call.requireQueryParameter("chapterId").toInt()
@@ -333,6 +359,9 @@ fun Routing.author(
 
                 // PATCH /author/status/book - 更新书籍状态
                 patch("/book") {
+                    call.requirePermission(
+                        listOf(generatePermissionCode(ResourceTypeEnum.BOOK, ActionEnum.UPDATE, ScopeEnum.OWN))
+                    )
                     val user = call.getCurrentUser()
                     val bookId = call.requireQueryParameter("bookId").toInt()
                     authorService.updateStatusBook(userId = user.id, bookId = bookId)

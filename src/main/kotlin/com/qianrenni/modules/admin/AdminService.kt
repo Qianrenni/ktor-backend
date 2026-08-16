@@ -6,6 +6,7 @@ import com.qianrenni.infrastructure.outbox.OutboxService
 import com.qianrenni.infrastructure.storage.TxtChapterParser
 import com.qianrenni.infrastructure.database.DatabaseManager
 import com.qianrenni.common.BookStatus
+import com.qianrenni.common.util.ImageValidator
 import com.qianrenni.models.tables.*
 import com.qianrenni.common.PageResult
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,13 @@ class AdminService(
     private val outboxService: OutboxService,
     private val cache: CacheService,
 ) {
+    companion object {
+        /** TXT 上传大小上限（20MB） */
+        const val MAX_TXT_UPLOAD_BYTES = 20L * 1024 * 1024
+
+        /** TXT 解析章节数上限 */
+        const val MAX_TXT_CHAPTERS = 5000
+    }
     /**
      * 分页获取用户列表
      */
@@ -194,6 +202,8 @@ class AdminService(
 
         // 如果上传了新封面，保存封面文件
         coverFile?.let { file ->
+            // 安全加固（M6）：校验封面魔数，拒绝任意内容伪装成图片
+            ImageValidator.requireImage(file)
             withContext(Dispatchers.IO) {
                 val coverDir = Path(config.staticDir + "/book/$bookId")
                 coverDir.toFile().mkdirs()
@@ -221,13 +231,19 @@ class AdminService(
         coverFile: File?,
         txtFile: File
     ): Int {
-        // 1. 读取 TXT 文件内容
+        // 1. 读取 TXT 文件内容（安全加固 M6：限制文件大小，防内存耗尽）
+        if (txtFile.length() > MAX_TXT_UPLOAD_BYTES) {
+            throw IllegalArgumentException("TXT 文件过大，上限 ${MAX_TXT_UPLOAD_BYTES / 1024 / 1024}MB")
+        }
         val txtContent = withContext(Dispatchers.IO) {
             txtFile.readText(Charsets.UTF_8)
         }
 
-        // 2. 解析 TXT 内容
+        // 2. 解析 TXT 内容（安全加固 M6：限制章节数，防资源耗尽）
         val parseResult = TxtChapterParser.parse(txtContent)
+        if (parseResult.chapters.size > MAX_TXT_CHAPTERS) {
+            throw IllegalArgumentException("章节数过多，上限 $MAX_TXT_CHAPTERS 章")
+        }
 
         // 3. 合并描述：表单传入的 description 优先，若为空则使用 TXT 前置内容
         val finalDescription = description.ifBlank { parseResult.description }
@@ -274,6 +290,8 @@ class AdminService(
 
         // 6. 保存封面
         coverFile?.let { file ->
+            // 安全加固（M6）：校验封面魔数
+            ImageValidator.requireImage(file)
             withContext(Dispatchers.IO) {
                 val coverDir = Path(config.staticDir + "/book/$bookId")
                 coverDir.toFile().mkdirs()

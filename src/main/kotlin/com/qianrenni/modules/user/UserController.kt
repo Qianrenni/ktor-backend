@@ -4,6 +4,7 @@ import com.qianrenni.common.ActionEnum
 import com.qianrenni.common.ResourceTypeEnum
 import com.qianrenni.common.ScopeEnum
 import com.qianrenni.models.tables.FullUser
+import com.qianrenni.common.web.getCurrentUser
 import com.qianrenni.common.web.requirePermission
 import com.qianrenni.common.ResponseModel
 import com.qianrenni.infrastructure.cache.CacheService
@@ -11,6 +12,7 @@ import com.qianrenni.infrastructure.mail.EmailService
 import com.qianrenni.modules.admin.generatePermissionCode
 import io.ktor.http.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -43,7 +45,9 @@ fun Routing.user(
     cacheService: CacheService,
     emailService: EmailService,
 ) {
-    route("/user") {
+    // 安全加固（M2）：/user 全组按来源 IP 限流（注册/忘记密码等公开端点）
+    rateLimit(RateLimitName("ip")) {
+        route("/user") {
         // GET /user/count - 获取用户数量
         authenticate("auth-jwt") {
             get("/count") {
@@ -64,9 +68,11 @@ fun Routing.user(
             // PATCH /user/update-password - 更新密码
             patch("/update-password") {
                 val request = call.receive<UserPasswordUpdate>()
+                // 安全加固（L5）：从 JWT 推导当前用户，不信任请求体里的用户名
+                val user = call.getCurrentUser()
 
                 userService.updatePassword(
-                    userEmail = request.userName,
+                    userEmail = user.email,
                     oldPassword = request.oldPassword,
                     newPassword = request.newPassword
                 )
@@ -138,6 +144,7 @@ fun Routing.user(
                 verifyCode = request.verifyCode
             )
             call.respond(HttpStatusCode.NoContent)
+        }
         }
     }
 }
