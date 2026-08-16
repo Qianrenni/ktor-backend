@@ -12,7 +12,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RequestShelfAdd(
      val bookId: Int,
-)
+) {
+    init {
+        require(bookId > 0, { "书籍 ID 必须为正数" })
+    }
+}
 
 fun Routing.shelf(shelfService: ShelfService) {
     route("/shelf") {

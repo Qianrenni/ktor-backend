@@ -15,7 +15,13 @@ data class RequestStatisticsReadEvent(
      val bookId: Int,
      val chapterId: Int,
      val eventType: String,
-)
+) {
+    init {
+        require(bookId > 0, { "书籍 ID 必须为正数" })
+        require(chapterId > 0, { "章节 ID 必须为正数" })
+        require(eventType.isNotBlank(), { "事件类型不能为空" })
+    }
+}
 
 fun Routing.statistics(statisticsService: StatisticsService) {
     route("/statistic") {

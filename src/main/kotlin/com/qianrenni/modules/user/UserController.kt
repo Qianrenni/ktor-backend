@@ -22,21 +22,38 @@ import kotlinx.serialization.Serializable
 data class RegisterUser(
     val user: FullUser,
     val captcha: String
-)
+) {
+    init {
+        // user 内部（用户名非空/长度）由 FullUser.init 校验
+        require(captcha.isNotBlank(), { "验证码不能为空" })
+    }
+}
 
 @Serializable
 data class UserPasswordUpdate(
     val userName: String,
     val oldPassword: String,
     val newPassword: String
-)
+) {
+    init {
+        require(userName.isNotBlank(), { "用户名不能为空" })
+        require(oldPassword.isNotBlank(), { "旧密码不能为空" })
+        require(newPassword.isNotBlank(), { "新密码不能为空" })
+    }
+}
 
 @Serializable
 data class ForgotPasswordRequest(
      val userAccount: String,
      val verifyCode: String,
      val password: String
-)
+) {
+    init {
+        require(userAccount.isNotBlank(), { "账号不能为空" })
+        require(verifyCode.isNotBlank(), { "验证码不能为空" })
+        require(password.isNotBlank(), { "新密码不能为空" })
+    }
+}
 
 
 fun Routing.user(

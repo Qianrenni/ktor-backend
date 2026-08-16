@@ -16,13 +16,28 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ContentBody(val content: String)
+data class ContentBody(val content: String) {
+    init {
+        require(content.isNotBlank(), { "评论内容不能为空" })
+        require(content.length <= 300, { "评论内容不能超过300字" })
+    }
+}
 
 @Serializable
-data class LineCommentBody(val line: Int, val content: String)
+data class LineCommentBody(val line: Int, val content: String) {
+    init {
+        require(line >= 0, { "非法的行号" })
+        require(content.isNotBlank(), { "评论内容不能为空" })
+        require(content.length <= 2000, { "评论内容不能超过2000字" })
+    }
+}
 
 @Serializable
-data class CommentStatusBody(val status: String)
+data class CommentStatusBody(val status: String) {
+    init {
+        require(status.isNotBlank(), { "状态不能为空" })
+    }
+}
 
 fun Routing.comment(commentService: CommentService, authorService: AuthorService) {
     // ==================== 无需认证 - 公开读取 ====================

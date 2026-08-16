@@ -25,7 +25,13 @@ data class RequestTokenGet(
     @SerialName("username")val userName: String,
     val password: String,
     val captcha: String
-)
+) {
+    init {
+        require(userName.isNotBlank(), { "用户名不能为空" })
+        require(password.isNotBlank(), { "密码不能为空" })
+        require(captcha.isNotBlank(), { "验证码不能为空" })
+    }
+}
 
 @Serializable
 data class ResponseTokenData(
@@ -38,7 +44,11 @@ data class ResponseTokenData(
 @Serializable
 data class RequestVerifyEmail(
      val email: String
-)
+) {
+    init {
+        require(email.isNotBlank(), { "邮箱不能为空" })
+    }
+}
 
 fun Routing.auth(
     userService: UserService,

@@ -46,7 +46,11 @@ data class ApplyAuthorRequest(val reason: String) {
 }
 
 @Serializable
-data class RejectAuthorRequest(val rejectReason: String? = null)
+data class RejectAuthorRequest(val rejectReason: String? = null) {
+    init {
+        require(rejectReason == null || rejectReason.length <= 500, { "拒绝理由不能超过500字" })
+    }
+}
 
 fun Routing.author(
     authorService: AuthorService,

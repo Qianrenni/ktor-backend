@@ -14,6 +14,7 @@ import com.qianrenni.common.util.ImageValidator
 import com.qianrenni.models.tables.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.dao.id.EntityID
@@ -31,6 +32,8 @@ class AuthorService(
     private val emailService: EmailService,
     private val chapterStoreFactory: ChapterStoreFactory,
     private val cache: CacheService,
+    /** 应用级协程作用域（随 application 生命周期取消，测试中避免泄漏协程访问已关闭连接池） */
+    private val notifyScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
 ) {
     suspend fun checkAuthor(userId: Int, bookId: Int) {
         databaseManager.suspendedTransaction(readOnly = true) {
@@ -390,7 +393,7 @@ class AuthorService(
                 }
             }
         }
-        CoroutineScope(Dispatchers.IO).launch {
+        notifyScope.launch {
             targetId?.let {
                 if (updateCount > 0) {
                     val email = userService.getUserById(it).email
@@ -434,7 +437,7 @@ class AuthorService(
                 }
             }
         }
-        CoroutineScope(Dispatchers.IO).launch {
+        notifyScope.launch {
             targetId?.let {
                 if (updateCount > 0) {
                     val email = userService.getUserById(it).email

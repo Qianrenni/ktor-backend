@@ -30,6 +30,7 @@ import com.qianrenni.modules.user.CaptchaService
 import com.qianrenni.modules.user.UserService
 import io.ktor.events.Events
 import org.slf4j.Logger
+import kotlin.coroutines.CoroutineContext
 
 /**
  * 装配上下文：组合根内各领域装配函数共享的底层资源。
@@ -41,6 +42,8 @@ class AppContext(
     val redis: RedisManager,
     val monitor: Events,
     val logger: Logger,
+    /** 应用级协程上下文（随 application 生命周期取消），供服务内 fire-and-forget 协程使用 */
+    val coroutineContext: CoroutineContext,
 )
 
 /**

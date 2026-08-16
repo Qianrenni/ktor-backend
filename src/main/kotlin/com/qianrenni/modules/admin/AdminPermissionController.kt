@@ -12,19 +12,43 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class PermissionIdsBody(val permissionIds: List<Int>)
+data class PermissionIdsBody(val permissionIds: List<Int>) {
+    init {
+        require(permissionIds.isNotEmpty(), { "权限列表不能为空" })
+    }
+}
 
 @Serializable
-data class ParentIdBody(val parentId: Int)
+data class ParentIdBody(val parentId: Int) {
+    init {
+        require(parentId > 0, { "父角色 ID 必须为正数" })
+    }
+}
 
 @Serializable
-data class RoleIdBody(val roleId: Int)
+data class RoleIdBody(val roleId: Int) {
+    init {
+        require(roleId > 0, { "角色 ID 必须为正数" })
+    }
+}
 
 @Serializable
-data class CreateRoleBody(val name: String, val code: String, val description: String? = null)
+data class CreateRoleBody(val name: String, val code: String, val description: String? = null) {
+    init {
+        require(name.isNotBlank(), { "角色名不能为空" })
+        require(name.length <= 50, { "角色名不能超过50字" })
+        require(code.isNotBlank(), { "角色编码不能为空" })
+        require(code.length <= 50, { "角色编码不能超过50字" })
+    }
+}
 
 @Serializable
-data class UpdateRoleBody(val name: String? = null, val description: String? = null)
+data class UpdateRoleBody(val name: String? = null, val description: String? = null) {
+    init {
+        require(name == null || name.isNotBlank(), { "角色名不能为空" })
+        require(name == null || name.length <= 50, { "角色名不能超过50字" })
+    }
+}
 
 /**
  * 管理端 - 权限 / 角色管理路由（/admin/permissions、/admin/roles）。

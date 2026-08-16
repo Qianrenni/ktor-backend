@@ -29,6 +29,7 @@ import com.qianrenni.modules.user.CaptchaService
 import com.qianrenni.modules.user.UserService
 import io.ktor.server.application.*
 import io.ktor.util.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
@@ -52,6 +53,7 @@ fun Application.configService(): Services {
         redis = redisManager,
         monitor = monitor,
         logger = environment.log,
+        coroutineContext = coroutineContext,
     )
 
     // 基础设施（最底层，被所有领域依赖）
@@ -132,6 +134,7 @@ private fun assembleAuthor(
     val authorService = AuthorService(
         ctx.config, ctx.db, infra.outboxService, admin.auditService,
         user.userService, infra.emailService, infra.contentStoreFactory, infra.cacheService,
+        notifyScope = CoroutineScope(ctx.coroutineContext),
     )
     return AuthorServices(authorService, authorApplicationService)
 }

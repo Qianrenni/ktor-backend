@@ -14,7 +14,13 @@ data class RequestReadingProgressAdd(
      val bookId: Int,
      val lastChapterId: Int,
      val lastPosition: Int,
-)
+) {
+    init {
+        require(bookId > 0, { "书籍 ID 必须为正数" })
+        require(lastChapterId > 0, { "章节 ID 必须为正数" })
+        require(lastPosition >= 0, { "阅读位置不能为负数" })
+    }
+}
 
 fun Routing.userReadingProgress(readProgressService: ReadProgressService) {
     route("/user_reading_progress") {
