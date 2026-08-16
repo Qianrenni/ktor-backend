@@ -4,36 +4,36 @@ import com.qianrenni.common.BookStatus
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
-import java.time.LocalDateTime
 
 
 object BookTable : IntIdTable(name = "book") {
     val name = varchar("name", 255)
     val author = varchar("author", 255)
     val description = text("description")
-    val category = varchar("category", 25)
-    val tags = varchar("tags", 255)
-    val totalChapter = integer(name = "totalChapter")
-    val createdAt = datetime("createdAt").default(LocalDateTime.now())
-    val updatedAt = datetime("updatedAt").default(LocalDateTime.now())
-    val wordsCount = integer("wordsCount")
-    val isActive = bool("isActive")
-    val isEnded = bool("isEnded")
+    val category = varchar("category", 25).default("")
+    val tags = varchar("tags", 255).default("")
+    val totalChapter = integer(name = "totalChapter").default(0)
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updatedAt").defaultExpression(CurrentDateTime)
+    val wordsCount = integer("wordsCount").default(0)
+    val isActive = bool("isActive").default(true)
+    val isEnded = bool("isEnded").default(false)
     val status = enumerationByName<BookStatus>(
         name = "status",
         length = 25
-    )
+    ).default(BookStatus.PENDING)
 }
 object BookChapterTable : IntIdTable(name = "book_chapter") {
     val bookId = integer("bookId").references(BookTable.id)
-    val title = varchar("title", 255)
+    val title = varchar("title", 255).default("")
     val wordCount = integer("wordCount")
-    val createdAt = datetime("createdAt")
-    val updatedAt = datetime("updatedAt")
-    val status = enumerationByName<BookStatus>("status", 25)
-    val isActive = bool("isActive")
-    val order = float("order")
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updatedAt").defaultExpression(CurrentDateTime)
+    val status = enumerationByName<BookStatus>("status", 25).default(BookStatus.PENDING)
+    val isActive = bool("isActive").default(true)
+    val order = float("order").default(0f)
 }
 
 

@@ -4,15 +4,15 @@ import com.qianrenni.common.BookStatus
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
-import java.time.LocalDateTime
 
 object BookCommentTable : IntIdTable(name = "book_comment") {
     val bookId = integer("bookId").references(BookTable.id)
     val userId = integer("userId").references(UserTable.id)
     val status = enumerationByName<BookStatus>("status", 50).default(BookStatus.PUBLISHED)
-    val createdAt = datetime("createdAt").default(LocalDateTime.now())
-    val updatedAt = datetime("updatedAt").default(LocalDateTime.now())
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updatedAt").defaultExpression(CurrentDateTime)
     val parentId = integer("parentId").references(BookCommentTable.id).nullable()
 }
 
@@ -20,8 +20,8 @@ object BookChapterCommentTable : IntIdTable(name = "book_chapter_comment") {
     val chapterId = integer("chapterId").references(BookChapterTable.id)
     val userId = integer("userId").references(UserTable.id)
     val status = enumerationByName<BookStatus>("status", 50).default(BookStatus.PUBLISHED)
-    val createdAt = datetime("createdAt").default(LocalDateTime.now())
-    val updatedAt = datetime("updatedAt").default(LocalDateTime.now())
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updatedAt").defaultExpression(CurrentDateTime)
     val parentId = integer("parentId").references(BookChapterCommentTable.id).nullable()
     val line = integer("line")
 }

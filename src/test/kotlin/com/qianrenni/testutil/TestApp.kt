@@ -76,35 +76,14 @@ val testTables: List<org.jetbrains.exposed.sql.Table> = listOf(
     UserReadingProgressTable,
 )
 
-/** 重建 schema：drop 全部表 → create 全部表 → 补 database.sql 中的列默认值 */
+/** 重建 schema：drop 全部表 → create 全部表。
+ *  生产默认值已声明在 Exposed 表定义（.default(...)）中，SchemaUtils.create() 生成的 DDL
+ *  自带默认值，与 database.sql 建表脚本语义一致，无需再手工 ALTER 补齐。 */
 private fun Application.initTestSchema() {
     val db = databaseManager.getDatabase()
     transaction(db) {
         SchemaUtils.drop(*testTables.toTypedArray())
         SchemaUtils.create(*testTables.toTypedArray())
-        // 以下列的默认值只在 database.sql 中声明（生产建表脚本），Exposed 定义无 default，
-        // 而生产代码插入时并不提供这些字段 —— H2 必须补齐语义才能跑通生产代码路径。
-        // 注意：Exposed 生成带引号的列名（"createdAt"），ALTER 必须精确匹配。
-        listOf(
-            "ALTER TABLE \"book_chapter\" ALTER COLUMN \"createdAt\" SET DEFAULT CURRENT_TIMESTAMP",
-            "ALTER TABLE \"book_chapter\" ALTER COLUMN \"updatedAt\" SET DEFAULT CURRENT_TIMESTAMP",
-            "ALTER TABLE \"shelf\" ALTER COLUMN \"createdAt\" SET DEFAULT CURRENT_TIMESTAMP",
-            "ALTER TABLE \"user_reading_progress\" ALTER COLUMN \"lastReadAt\" SET DEFAULT CURRENT_TIMESTAMP",
-            "ALTER TABLE \"user_read_event\" ALTER COLUMN \"eventTime\" SET DEFAULT CURRENT_TIMESTAMP",
-        ).forEach { exec(it) }
-        // AuthorService.createBook / updateBookChapter / updateBook（负 id 分支）等插入路径不提供
-        // 以下列，生产靠 database.sql 默认值（status='PENDING'、isActive=1、order=0 等）——
-        // 测试库必须对齐，否则这些生产代码路径在 H2 下无法执行（schema 默认值单一来源缺失，见测试报告）。
-        listOf(
-            "ALTER TABLE \"book\" ALTER COLUMN \"totalChapter\" SET DEFAULT 0",
-            "ALTER TABLE \"book\" ALTER COLUMN \"wordsCount\" SET DEFAULT 0",
-            "ALTER TABLE \"book\" ALTER COLUMN \"isActive\" SET DEFAULT TRUE",
-            "ALTER TABLE \"book\" ALTER COLUMN \"isEnded\" SET DEFAULT FALSE",
-            "ALTER TABLE \"book\" ALTER COLUMN \"status\" SET DEFAULT 'PENDING'",
-            "ALTER TABLE \"book_chapter\" ALTER COLUMN \"status\" SET DEFAULT 'PENDING'",
-            "ALTER TABLE \"book_chapter\" ALTER COLUMN \"isActive\" SET DEFAULT TRUE",
-            "ALTER TABLE \"book_chapter\" ALTER COLUMN \"order\" SET DEFAULT 0",
-        ).forEach { exec(it) }
     }
     seedDatabase(databaseManager.getDatabase())
 }

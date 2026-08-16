@@ -2,8 +2,8 @@ package com.qianrenni.models.tables
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
-import java.time.LocalDateTime
 
 /**
  * Outbox 文件操作类型
@@ -43,8 +43,8 @@ object FileSyncOutboxTable : IntIdTable(name = "file_sync_outbox") {
     val status = enumerationByName<OutboxStatus>("status", 16).default(OutboxStatus.PENDING)
     val retryCount = integer("retryCount").default(0)
     val errorMessage = text("errorMessage").nullable()
-    val createdAt = datetime("createdAt").default(LocalDateTime.now())
-    val updatedAt = datetime("updatedAt").default(LocalDateTime.now())
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updatedAt").defaultExpression(CurrentDateTime)
 }
 
 /**

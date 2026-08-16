@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 import java.time.LocalDateTime
 
@@ -12,8 +13,8 @@ object UserTable: IntIdTable(name = "user") {
     val userName = varchar("userName", 255)
     val password = varchar("password", 255)
     val email = varchar("email", 255)
-    val isActive = bool("isActive")
-    val avatar = varchar("avatar", 255)
+    val isActive = bool("isActive").default(true)
+    val avatar = varchar("avatar", 255).default("")
     val createdAt = datetime(name = "createdAt").clientDefault { LocalDateTime.now() }
     val updatedAt = datetime(name = "updatedAt").clientDefault { LocalDateTime.now() }
 }
@@ -21,14 +22,14 @@ object UserReadingProgressTable : Table(name = "user_reading_progress") {
     val userId = integer("userId").references(UserTable.id)
     val bookId = integer("bookId").references(BookTable.id)
     val lastChapterId = integer("lastChapterId")
-    val lastPosition = integer("lastPosition")
-    val lastReadAt = datetime("lastReadAt")
+    val lastPosition = integer("lastPosition").default(0)
+    val lastReadAt = datetime("lastReadAt").defaultExpression(CurrentDateTime)
 }
 
 object ShelfTable : Table(name = "shelf") {
     val userId = integer("userId").references(UserTable.id)
     val bookId = integer("bookId").references(BookTable.id)
-    val createdAt = datetime("createdAt")
+    val createdAt = datetime("createdAt").defaultExpression(CurrentDateTime)
 }
 
 @Serializable

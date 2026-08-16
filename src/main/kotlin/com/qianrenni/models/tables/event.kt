@@ -4,13 +4,14 @@ import com.qianrenni.common.ReportEnum
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object UserReadEventTable : Table(name = "user_read_event") {
     val userId = integer("userId").references(UserTable.id)
     val bookId = integer("bookId").references(BookTable.id)
     val chapterId = integer("chapterId").references(BookChapterTable.id)
-    val eventTime = datetime("eventTime")
+    val eventTime = datetime("eventTime").defaultExpression(CurrentDateTime)
     val eventType = enumerationByName<ReportEnum>("eventType", 25)
 }
 
