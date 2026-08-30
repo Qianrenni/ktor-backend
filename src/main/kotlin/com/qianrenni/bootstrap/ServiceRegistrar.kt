@@ -26,8 +26,6 @@ import com.qianrenni.modules.book.ShelfService
 import com.qianrenni.modules.book.StatisticsService
 import com.qianrenni.modules.system.SystemService
 import com.qianrenni.modules.user.CaptchaService
-import com.qianrenni.modules.user.QrLoginService
-import com.qianrenni.modules.user.TokenIssuer
 import com.qianrenni.modules.user.UserService
 import io.ktor.server.application.*
 import io.ktor.util.*
@@ -63,7 +61,7 @@ fun Application.configService(): Services {
     // 权限/管理域（被 user/author 依赖，先于它们装配）
     val admin = assembleAdmin(ctx, infra)
     // 用户域
-    val user = assembleUser(ctx, admin, infra)
+    val user = assembleUser(ctx, admin)
     // 书籍/评论域
     val book = assembleBook(ctx, infra, user)
     // 作者域
@@ -108,12 +106,10 @@ private fun assembleAdmin(ctx: AppContext, infra: InfraServices): AdminServices 
     return AdminServices(permissionCache, rightService, roleAdminService, adminService, auditService)
 }
 
-private fun assembleUser(ctx: AppContext, admin: AdminServices, infra: InfraServices): UserServices {
+private fun assembleUser(ctx: AppContext, admin: AdminServices): UserServices {
     val captchaService = CaptchaService(ctx.config, ctx.redis)
     val userService = UserService(ctx.config, ctx.db, admin.rightService, captchaService)
-    val tokenIssuer = TokenIssuer(ctx.config, infra.cacheService)
-    val qrLoginService = QrLoginService(ctx.config, infra.cacheService, userService, tokenIssuer)
-    return UserServices(userService, captchaService, tokenIssuer, qrLoginService)
+    return UserServices(userService, captchaService)
 }
 
 private fun assembleBook(ctx: AppContext, infra: InfraServices, user: UserServices): BookServices {

@@ -220,36 +220,6 @@ class CacheService(
     }
 
     /**
-     * 原子读取并删除（Redis GETDEL，需 Redis >= 6.2）。
-     * 一次性凭证（如扫码登录 confirmToken）的消费：仅首个读取者拿到值，
-     * 后续读取返回 null，天然防重放。
-     */
-    suspend fun cacheGetDeleteSimple(key: String): String? {
-        val redis = redisManager.getAsyncCommands()
-        return try {
-            redis.getdel(key).await()
-        } catch (e: Exception) {
-            logger.error("Cache getdel failed: $e")
-            null
-        }
-    }
-
-    /**
-     * 原子写入，仅当 key 不存在时生效（SET NX EX）。
-     * 并发"铸币"场景（如扫码登录 confirmToken）只允许首个写入者成功。
-     * @return true=写入成功（key 原不存在）；false=key 已存在（写入被 NX 拒绝）
-     */
-    suspend fun cacheSetNxSimple(key: String, value: String, expire: Long): Boolean {
-        val redis = redisManager.getAsyncCommands()
-        return try {
-            redis.set(key, value, io.lettuce.core.SetArgs.Builder.nx().ex(expire)).await() != null
-        } catch (e: Exception) {
-            logger.error("Cache setnx failed: $e")
-            throw IllegalStateException("服务器繁忙,请稍后再试")
-        }
-    }
-
-    /**
      * 手动设置缓存
      */
     suspend fun <T> cacheSet(

@@ -30,8 +30,6 @@ data class AppConfig(
     val refreshTokenExpire: Int ,
     val emailVerifyExpire: Int ,
     val captchaExpire: Int ,
-    val qrLoginExpire: Int ,
-    val qrConfirmExpire: Int ,
     val permissionBitLength: Int ,
 
     // 缓存配置
@@ -96,9 +94,6 @@ data class AppConfig(
                 refreshTokenExpire = env("REFRESH_TOKEN_EXPIRE").toIntOrDefault(60 * 30),
                 emailVerifyExpire = env("EMAIL_VERIFY_EXPIRE").toIntOrDefault(300),
                 captchaExpire = env("CAPTCHA_EXPIRE").toIntOrDefault(120),
-                // 扫码登录：二维码票据有效期 / confirmToken 兑换宽限期
-                qrLoginExpire = env("QR_LOGIN_EXPIRE").toIntOrDefault(300),
-                qrConfirmExpire = env("QR_CONFIRM_EXPIRE").toIntOrDefault(120),
                 permissionBitLength = env("PERMISSION_BIT_LENGTH").toIntOrDefault(32),
                 bookCacheExpire = env("BOOK_CACHE_EXPIRE").toIntOrDefault(1800),
                 permissionCacheExpire = env("PERMISSION_CACHE_EXPIRE").toIntOrDefault(604800),
