@@ -1,9 +1,7 @@
 package com.qianrenni.modules.user
 
-import com.auth0.jwt.JWT
 import com.qianrenni.infrastructure.cache.CacheService
 import com.qianrenni.infrastructure.mail.EmailService
-import com.auth0.jwt.algorithms.Algorithm
 import com.qianrenni.common.appConfig
 import com.qianrenni.models.tables.FullUser
 import com.qianrenni.common.ResponseModel
@@ -18,7 +16,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.util.*
 
 @Serializable
 data class RequestTokenGet(
@@ -52,6 +49,7 @@ data class RequestVerifyEmail(
 
 fun Routing.auth(
     userService: UserService,
+    tokenIssuer: TokenIssuer,
     cacheService: CacheService,
     emailService: EmailService,
 ) {
@@ -68,30 +66,9 @@ fun Routing.auth(
                 requestTokenGet = request
             )
 
-            // 生成 access_token
-            val accessToken = JWT.create()
-                .withAudience(application.appConfig.audience)
-                .withIssuer(application.appConfig.issuer)
-                .withSubject(user.id.toString())
-                .withExpiresAt(Date(System.currentTimeMillis() + application.appConfig.accessTokenExpire * 1000))
-                .sign(Algorithm.HMAC256(application.appConfig.secretKey))
-
-            // 生成 refresh_token 并存储到 Redis
-            val refreshToken = TokenGenerator.secureRandom(byteLength = 48)
-            cacheService.cacheSetSimple(
-                key = refreshToken,
-                value = user.id.toString(),
-                expire = application.appConfig.refreshTokenExpire.toLong()
-            )
-            call.respond(
-                ResponseModel.Success(
-                    ResponseTokenData(
-                        accessToken = accessToken,
-                        refreshToken = refreshToken,
-                        user = user
-                    )
-                )
-            )
+            // 签发 access_token + refresh_token（与扫码登录共用同一签发逻辑）
+            val tokenData = tokenIssuer.issue(user)
+            call.respond(ResponseModel.Success(tokenData))
         }
 
         // POST /token/refresh - 刷新访问令牌
@@ -112,31 +89,8 @@ fun Routing.auth(
 
             val user = userService.getUserById(userId.toInt())
 
-            // 生成新的 access_token
-            val newAccessToken = JWT.create()
-                .withAudience(application.appConfig.audience)
-                .withIssuer(application.appConfig.issuer)
-                .withSubject(user.id.toString())
-                .withExpiresAt(Date(System.currentTimeMillis() + application.appConfig.accessTokenExpire * 1000))
-                .sign(Algorithm.HMAC256(application.appConfig.secretKey))
-
-            // 生成新的 refresh_token
-            val newRefreshToken = TokenGenerator.secureRandom(byteLength = 48)
-            cacheService.cacheSetSimple(
-                key = newRefreshToken,
-                value = user.id.toString(),
-                expire = application.appConfig.refreshTokenExpire.toLong()
-            )
-
-            call.respond(
-                ResponseModel.Success(
-                    ResponseTokenData(
-                    accessToken = newAccessToken,
-                    refreshToken = newRefreshToken,
-                    user = user
-                    )
-                )
-            )
+            // 轮换签发新的 access_token + refresh_token
+            call.respond(ResponseModel.Success(tokenIssuer.issue(user)))
         }
 
         // POST /token/verify_email - 发送邮箱验证邮件
