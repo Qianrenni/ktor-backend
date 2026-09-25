@@ -220,6 +220,29 @@ class CacheService(
     }
 
     /**
+     * 原子地读取并删除（GETDEL 语义，用 Lua 保证「读 + 删」不被并发穿插）。
+     *
+     * 用于一次性凭证兑换（如扫码登录票据）：并发调用时只有一个调用方拿到值，
+     * 避免先 get 再 del 的窗口期被重放而签发多份令牌。
+     */
+    suspend fun cacheGetAndDelete(key: String): String? {
+        val redis = redisManager.getAsyncCommands()
+        val luaScript = """
+            local value = redis.call("get", KEYS[1])
+            if value then
+                redis.call("del", KEYS[1])
+            end
+            return value
+        """
+        return try {
+            redis.eval<String>(luaScript, ScriptOutputType.VALUE, arrayOf(key)).await()
+        } catch (e: Exception) {
+            logger.error("Cache getdel failed: $key: $e")
+            throw IllegalStateException("服务器繁忙,请稍后再试")
+        }
+    }
+
+    /**
      * 手动设置缓存
      */
     suspend fun <T> cacheSet(

@@ -17,6 +17,9 @@ import com.qianrenni.modules.book.ShelfService
 import com.qianrenni.modules.book.StatisticsService
 import com.qianrenni.modules.system.SystemService
 import com.qianrenni.modules.user.CaptchaService
+import com.qianrenni.modules.user.DeviceLoginService
+import com.qianrenni.modules.user.QrLoginService
+import com.qianrenni.modules.user.TokenIssuer
 import com.qianrenni.modules.user.UserService
 import io.ktor.server.application.Application
 
@@ -33,6 +36,15 @@ val Application.userService: UserService
 
 val Application.captchaService: CaptchaService
     get() = services.user.captchaService
+
+val Application.qrLoginService: QrLoginService
+    get() = services.user.qrLoginService
+
+val Application.deviceLoginService: DeviceLoginService
+    get() = services.user.deviceLoginService
+
+val Application.tokenIssuer: TokenIssuer
+    get() = services.user.tokenIssuer
 
 val Application.shelfService: ShelfService
     get() = services.book.shelfService

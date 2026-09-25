@@ -22,5 +22,13 @@ fun Application.configureRateLimiting() {
                 applicationCall.request.origin.remoteHost
             }
         }
+        // 扫码登录：网页端需要高频短轮询票据状态，单独给一份放宽容量的 IP 配额，
+        // 避免轮询挤占其他公开接口的 "ip" 配额（NAT 后的多用户共用同一来源 IP）
+        register(RateLimitName("qr-login")) {
+            rateLimiter(limit = 300, refillPeriod = 60.seconds)
+            requestKey { applicationCall ->
+                applicationCall.request.origin.remoteHost
+            }
+        }
     }
 }

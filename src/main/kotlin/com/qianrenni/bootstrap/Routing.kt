@@ -15,6 +15,8 @@ import com.qianrenni.modules.system.system
 import com.qianrenni.modules.system.systemConfig
 import com.qianrenni.modules.user.auth
 import com.qianrenni.modules.user.captcha
+import com.qianrenni.modules.user.deviceLogin
+import com.qianrenni.modules.user.qrLogin
 import com.qianrenni.modules.user.user
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -27,7 +29,9 @@ fun Application.configureRouting() {
     routing {
         staticFiles("/static", File(appConfig.staticDir))
         captcha(services.user.captchaService)
-        auth(services.user.userService, services.infra.cacheService, services.infra.emailService)
+        auth(services.user.userService, services.infra.cacheService, services.infra.emailService, services.user.tokenIssuer)
+        qrLogin(services.user.qrLoginService)
+        deviceLogin(services.user.deviceLoginService)
         user(services.user.userService, services.user.captchaService, services.infra.cacheService, services.infra.emailService)
         book(services.book.bookService)
         userReadingProgress(services.book.readProgressService)

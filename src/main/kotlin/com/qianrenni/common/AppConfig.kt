@@ -31,6 +31,10 @@ data class AppConfig(
     val emailVerifyExpire: Int ,
     val captchaExpire: Int ,
     val permissionBitLength: Int ,
+    // 扫码登录票据有效期（秒）
+    val qrLoginExpire: Int ,
+    // 指纹解锁登录的设备凭据有效期（秒，默认 30 天）
+    val deviceTokenExpire: Int ,
 
     // 缓存配置
     val bookCacheExpire: Int ,
@@ -95,6 +99,8 @@ data class AppConfig(
                 emailVerifyExpire = env("EMAIL_VERIFY_EXPIRE").toIntOrDefault(300),
                 captchaExpire = env("CAPTCHA_EXPIRE").toIntOrDefault(120),
                 permissionBitLength = env("PERMISSION_BIT_LENGTH").toIntOrDefault(32),
+                qrLoginExpire = env("QR_LOGIN_EXPIRE").toIntOrDefault(120).coerceAtLeast(30),
+                deviceTokenExpire = env("DEVICE_TOKEN_EXPIRE").toIntOrDefault(30 * 24 * 3600),
                 bookCacheExpire = env("BOOK_CACHE_EXPIRE").toIntOrDefault(1800),
                 permissionCacheExpire = env("PERMISSION_CACHE_EXPIRE").toIntOrDefault(604800),
                 ipLimitEnable = env("IP_LIMIT_ENABLE")?.toBooleanStrictOrNull() ?: true,

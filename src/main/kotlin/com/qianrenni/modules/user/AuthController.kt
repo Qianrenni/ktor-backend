@@ -1,14 +1,12 @@
 package com.qianrenni.modules.user
 
-import com.auth0.jwt.JWT
+import com.qianrenni.common.appConfig
+import com.qianrenni.common.util.TokenGenerator
 import com.qianrenni.infrastructure.cache.CacheService
 import com.qianrenni.infrastructure.mail.EmailService
-import com.auth0.jwt.algorithms.Algorithm
-import com.qianrenni.common.appConfig
 import com.qianrenni.models.tables.FullUser
 import com.qianrenni.common.ResponseModel
 import com.qianrenni.modules.user.UserService
-import com.qianrenni.common.util.TokenGenerator
 import io.ktor.http.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
@@ -18,7 +16,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.util.*
 
 @Serializable
 data class RequestTokenGet(
@@ -54,6 +51,7 @@ fun Routing.auth(
     userService: UserService,
     cacheService: CacheService,
     emailService: EmailService,
+    tokenIssuer: TokenIssuer,
 ) {
     // 安全加固（M2）：/token 全组按来源 IP 限流（登录/刷新/邮箱验证等公开端点）
     rateLimit(RateLimitName("ip")) {
@@ -68,28 +66,9 @@ fun Routing.auth(
                 requestTokenGet = request
             )
 
-            // 生成 access_token
-            val accessToken = JWT.create()
-                .withAudience(application.appConfig.audience)
-                .withIssuer(application.appConfig.issuer)
-                .withSubject(user.id.toString())
-                .withExpiresAt(Date(System.currentTimeMillis() + application.appConfig.accessTokenExpire * 1000))
-                .sign(Algorithm.HMAC256(application.appConfig.secretKey))
-
-            // 生成 refresh_token 并存储到 Redis
-            val refreshToken = TokenGenerator.secureRandom(byteLength = 48)
-            cacheService.cacheSetSimple(
-                key = refreshToken,
-                value = user.id.toString(),
-                expire = application.appConfig.refreshTokenExpire.toLong()
-            )
             call.respond(
                 ResponseModel.Success(
-                    ResponseTokenData(
-                        accessToken = accessToken,
-                        refreshToken = refreshToken,
-                        user = user
-                    )
+                    tokenIssuer.issue(user)
                 )
             )
         }
@@ -112,29 +91,10 @@ fun Routing.auth(
 
             val user = userService.getUserById(userId.toInt())
 
-            // 生成新的 access_token
-            val newAccessToken = JWT.create()
-                .withAudience(application.appConfig.audience)
-                .withIssuer(application.appConfig.issuer)
-                .withSubject(user.id.toString())
-                .withExpiresAt(Date(System.currentTimeMillis() + application.appConfig.accessTokenExpire * 1000))
-                .sign(Algorithm.HMAC256(application.appConfig.secretKey))
-
-            // 生成新的 refresh_token
-            val newRefreshToken = TokenGenerator.secureRandom(byteLength = 48)
-            cacheService.cacheSetSimple(
-                key = newRefreshToken,
-                value = user.id.toString(),
-                expire = application.appConfig.refreshTokenExpire.toLong()
-            )
-
+            // 轮换令牌（旧 refresh_token 已删除，实现一次性使用）
             call.respond(
                 ResponseModel.Success(
-                    ResponseTokenData(
-                    accessToken = newAccessToken,
-                    refreshToken = newRefreshToken,
-                    user = user
-                    )
+                    tokenIssuer.issue(user)
                 )
             )
         }

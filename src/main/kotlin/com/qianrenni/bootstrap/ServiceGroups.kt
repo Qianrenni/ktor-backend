@@ -27,6 +27,9 @@ import com.qianrenni.modules.book.ShelfService
 import com.qianrenni.modules.book.StatisticsService
 import com.qianrenni.modules.system.SystemService
 import com.qianrenni.modules.user.CaptchaService
+import com.qianrenni.modules.user.DeviceLoginService
+import com.qianrenni.modules.user.QrLoginService
+import com.qianrenni.modules.user.TokenIssuer
 import com.qianrenni.modules.user.UserService
 import io.ktor.events.Events
 import org.slf4j.Logger
@@ -75,6 +78,9 @@ class InfraServices(
 class UserServices(
     val userService: UserService,
     val captchaService: CaptchaService,
+    val tokenIssuer: TokenIssuer,
+    val qrLoginService: QrLoginService,
+    val deviceLoginService: DeviceLoginService,
 )
 
 class BookServices(
