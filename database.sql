@@ -817,3 +817,29 @@ CREATE TABLE IF NOT EXISTS `file_sync_outbox`
     PRIMARY KEY (`id`),
     INDEX `idx_outbox_status_updatedAt` (`status`, `updatedAt`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+-- ============================================================
+-- app_bundle：容器页面包（native/h5/rn）的版本管理
+-- 同一 appKey 下多版本共存，仅一条 isActive=1 为当前生效版本
+-- ============================================================
+use ktor;
+CREATE TABLE IF NOT EXISTS `app_bundle`
+(
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `appKey` VARCHAR(64) NOT NULL,
+    `route` VARCHAR(128) NOT NULL,
+    `engine` VARCHAR(16) NOT NULL COMMENT 'h5 / rn',
+    `entry` VARCHAR(255) NOT NULL COMMENT 'h5: 包内 HTML 相对路径；rn: component 名',
+    `versionCode` INT NOT NULL COMMENT '服务端分配，同 appKey 内单调递增',
+    `versionName` VARCHAR(32) NOT NULL,
+    `filePath` VARCHAR(255) NOT NULL COMMENT '相对 STATIC_DIR，经 /static 对外提供',
+    `md5` VARCHAR(32) NOT NULL COMMENT '包内容 MD5，客户端下载后校验',
+    `size` BIGINT NOT NULL,
+    `description` VARCHAR(255) NOT NULL DEFAULT '',
+    `isActive` TINYINT(1) NOT NULL DEFAULT 0,
+    `minAppVersion` INT NOT NULL DEFAULT 0 COMMENT '最低客户端 versionCode，0 表示不限',
+    `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_bundle_appKey_version` (`appKey`, `versionCode`),
+    INDEX `idx_bundle_appKey_active` (`appKey`, `isActive`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;

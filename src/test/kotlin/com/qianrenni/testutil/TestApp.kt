@@ -74,6 +74,7 @@ val testTables: List<org.jetbrains.exposed.sql.Table> = listOf(
     UserReadEventTable,
     ShelfTable,
     UserReadingProgressTable,
+    AppBundleTable,
 )
 
 /** 重建 schema：drop 全部表 → create 全部表。

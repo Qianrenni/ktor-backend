@@ -12,6 +12,7 @@ import com.qianrenni.infrastructure.storage.ContentStoreCompactor
 import com.qianrenni.infrastructure.storage.ContentStoreFactory
 import com.qianrenni.infrastructure.task.TaskManager
 import com.qianrenni.modules.system.SystemConfigService
+import com.qianrenni.modules.system.BundleService
 import com.qianrenni.modules.admin.AdminService
 import com.qianrenni.modules.admin.AuditService
 import com.qianrenni.modules.admin.PermissionCache
@@ -69,8 +70,8 @@ fun Application.configService(): Services {
     val book = assembleBook(ctx, infra, user)
     // 作者域
     val author = assembleAuthor(ctx, infra, admin, user)
-    // 系统域
-    val system = assembleSystem(infra)
+    // 系统域（容器页面包版本管理需要 config/db/logger）
+    val system = assembleSystem(ctx, infra)
 
     val services = Services(infra, user, book, admin, author, system)
     attributes[ServicesKey] = services
@@ -151,8 +152,12 @@ private fun assembleAuthor(
     return AuthorServices(authorService, authorApplicationService)
 }
 
-private fun assembleSystem(infra: InfraServices): SystemServices =
-    SystemServices(SystemService(), SystemConfigService(infra.configService))
+private fun assembleSystem(ctx: AppContext, infra: InfraServices): SystemServices =
+    SystemServices(
+        systemService = SystemService(),
+        systemConfigService = SystemConfigService(infra.configService),
+        bundleService = BundleService(ctx.config, ctx.db, ctx.logger),
+    )
 
 private val ServicesKey = AttributeKey<Services>("Services")
 

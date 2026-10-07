@@ -15,6 +15,7 @@ import com.qianrenni.modules.book.CommentService
 import com.qianrenni.modules.book.ReadProgressService
 import com.qianrenni.modules.book.ShelfService
 import com.qianrenni.modules.book.StatisticsService
+import com.qianrenni.modules.system.BundleService
 import com.qianrenni.modules.system.SystemService
 import com.qianrenni.modules.user.CaptchaService
 import com.qianrenni.modules.user.DeviceLoginService
@@ -69,6 +70,9 @@ val Application.auditService: AuditService
 
 val Application.adminService: AdminService
     get() = services.admin.adminService
+
+val Application.bundleService: BundleService
+    get() = services.system.bundleService
 
 val Application.rightService: RightService
     get() = services.admin.rightService

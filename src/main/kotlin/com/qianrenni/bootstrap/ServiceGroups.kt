@@ -13,6 +13,7 @@ import com.qianrenni.infrastructure.storage.ContentStoreCompactor
 import com.qianrenni.infrastructure.storage.ContentStoreFactory
 import com.qianrenni.infrastructure.task.TaskManager
 import com.qianrenni.modules.system.SystemConfigService
+import com.qianrenni.modules.system.BundleService
 import com.qianrenni.modules.admin.AdminService
 import com.qianrenni.modules.admin.AuditService
 import com.qianrenni.modules.admin.PermissionCache
@@ -107,4 +108,5 @@ class AuthorServices(
 class SystemServices(
     val systemService: SystemService,
     val systemConfigService: SystemConfigService,
+    val bundleService: BundleService,
 )

@@ -60,6 +60,8 @@ data class AppConfig(
 
     // 服务器配置
     val serverUrl: String ,
+    // 容器页面包（h5/rn bundle）单包体积上限（字节，默认 20MB）
+    val bundleMaxBytes: Long ,
 
     // 邮箱配置
     val smtpServer: String ,
@@ -116,6 +118,7 @@ data class AppConfig(
                 contentStoreCompactMinLiveBytes = env("CONTENT_STORE_COMPACT_MIN_LIVE_BYTES")?.toLongOrNull() ?: (64 * 1024).toLong(),
                 contentStoreCompactMaxFileBytes = env("CONTENT_STORE_COMPACT_MAX_FILE_BYTES")?.toLongOrNull() ?: (512L * 1024 * 1024),
                 serverUrl = env("SERVER_URL") ?: "http://localhost:8080",
+                bundleMaxBytes = env("BUNDLE_MAX_BYTES")?.toLongOrNull() ?: (20L * 1024 * 1024),
                 smtpServer = env("SMTP_SERVER") ?: "smtp.qq.com",
                 smtpPort = env("SMTP_PORT").toIntOrDefault(465),
                 emailAccount = env("EMAIL_ACCOUNT") ?: "",

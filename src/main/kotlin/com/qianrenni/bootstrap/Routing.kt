@@ -11,6 +11,7 @@ import com.qianrenni.modules.book.comment
 import com.qianrenni.modules.book.shelf
 import com.qianrenni.modules.book.statistics
 import com.qianrenni.modules.book.userReadingProgress
+import com.qianrenni.modules.system.bundle
 import com.qianrenni.modules.system.system
 import com.qianrenni.modules.system.systemConfig
 import com.qianrenni.modules.user.auth
@@ -45,6 +46,7 @@ fun Application.configureRouting() {
         author(services.author.authorService, services.author.authorApplicationService)
         system(services.system.systemService)
         systemConfig(services.system.systemConfigService)
+        bundle(services.system.bundleService)
         if (appConfig.environment == "dev") {
             test(services.infra.emailService)
         }
